@@ -67,12 +67,21 @@ void UnLoad(MemSrc* mem)
 
 }
 
+void InjectInternal(const MemSrc* src, std::ostringstream* dst)
+{
+	int offset = 10;
+	dst->write((const char*)src->p, offset);
+	dst->write((const char*)(src->p + offset), src->size - offset);
+}
 
 void Inject(const char* filePath)
 {
-	MemSrc mem;
-	bool loaded = LoadFile(filePath, &mem);
-	ASSERT(loaded);		
-
-	UnLoad(&mem);
+	MemSrc memSrc;
+	bool loaded = LoadFile(filePath, &memSrc);
+	ASSERT(loaded);
+	std::ostringstream memDst;
+	InjectInternal(&memSrc, &memDst);
+	UnLoad(&memSrc);
+	std::ofstream fOut(filePath, std::ios::binary|std::ios::out);
+	fOut << memDst.str();
 }
