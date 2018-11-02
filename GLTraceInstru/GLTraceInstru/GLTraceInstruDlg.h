@@ -1,4 +1,4 @@
-// DemoMFCDlg.h : header file
+// GLTraceInstruDlg.h : header file
 //
 
 #pragma once

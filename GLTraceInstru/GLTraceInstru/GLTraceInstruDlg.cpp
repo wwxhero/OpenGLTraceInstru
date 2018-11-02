@@ -1,4 +1,4 @@
-// DemoMFCDlg.cpp : implementation file
+// GLTraceInstruDlg.cpp : implementation file
 //
 
 #include "stdafx.h"
