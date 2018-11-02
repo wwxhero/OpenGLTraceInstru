@@ -5,6 +5,7 @@
 #include "GLTraceInstru.h"
 #include "GLTraceInstruDlg.h"
 #include "OpenGLApisDesc.h"
+#include <ShObjIdl.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -64,6 +65,7 @@ BEGIN_MESSAGE_MAP(CGLTraceInstruDlg, CDialog)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_BTNDIR, &CGLTraceInstruDlg::OnBtnClickFilePathSel)
 	ON_NOTIFY(NM_RCLICK, IDC_COLUMNTREE, &CGLTraceInstruDlg::OnRclickedColumntree)
 END_MESSAGE_MAP()
 
@@ -257,4 +259,24 @@ void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
 		MessageBox(szState + _T(" Item text: ") + szItemText);
 	}
 
+}
+
+void CGLTraceInstruDlg::OnBtnClickFilePathSel()
+{
+	CFolderPickerDialog folderPickerDialog(NULL, OFN_FILEMUSTEXIST  | OFN_ENABLESIZING, this, sizeof(OPENFILENAME)); //fixme: | OFN_ALLOWMULTISELECT
+	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR);
+	CString folders;
+	if (folderPickerDialog.DoModal() == IDOK)
+	{
+		POSITION pos = folderPickerDialog.GetStartPosition();
+		if (pos)
+			folders = folderPickerDialog.GetNextPathName(pos);
+		while (pos)
+		{
+			CString path = folderPickerDialog.GetNextPathName(pos);
+			folders += ";";
+			folders += path;
+		}
+	}
+	pEdit->SetWindowText(folders);
 }
