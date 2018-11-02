@@ -1,5 +1,4 @@
-
-// GLTraceInstru.h : main header file for the PROJECT_NAME application
+// DemoMFC.h : main header file for the PROJECT_NAME application
 //
 
 #pragma once
@@ -12,7 +11,7 @@
 
 
 // CGLTraceInstruApp:
-// See GLTraceInstru.cpp for the implementation of this class
+// See DemoMFC.cpp for the implementation of this class
 //
 
 class CGLTraceInstruApp : public CWinApp
@@ -21,7 +20,7 @@ public:
 	CGLTraceInstruApp();
 
 // Overrides
-public:
+	public:
 	virtual BOOL InitInstance();
 
 // Implementation

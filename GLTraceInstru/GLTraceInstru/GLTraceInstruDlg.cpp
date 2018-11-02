@@ -1,12 +1,10 @@
-
-// GLTraceInstruDlg.cpp : implementation file
+// DemoMFCDlg.cpp : implementation file
 //
 
 #include "stdafx.h"
 #include "GLTraceInstru.h"
 #include "GLTraceInstruDlg.h"
-#include "afxdialogex.h"
-#include "GLTraceInjector.h"
+#include "OpenGLApisDesc.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -15,7 +13,7 @@
 
 // CAboutDlg dialog used for App About
 
-class CAboutDlg : public CDialogEx
+class CAboutDlg : public CDialog
 {
 public:
 	CAboutDlg();
@@ -31,16 +29,16 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg() : CDialogEx(CAboutDlg::IDD)
+CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 }
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+	CDialog::DoDataExchange(pDX);
 }
 
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 END_MESSAGE_MAP()
 
 
@@ -57,22 +55,28 @@ CGLTraceInstruDlg::CGLTraceInstruDlg(CWnd* pParent /*=NULL*/)
 
 void CGLTraceInstruDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_COLUMNTREE, m_columnTree);
 }
 
-BEGIN_MESSAGE_MAP(CGLTraceInstruDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CGLTraceInstruDlg, CDialog)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDOK, &CGLTraceInstruDlg::OnBnClickedOk)
+	ON_WM_SIZE()
+	ON_NOTIFY(NM_RCLICK, IDC_COLUMNTREE, &CGLTraceInstruDlg::OnRclickedColumntree)
 END_MESSAGE_MAP()
+
+BEGIN_EASYSIZE_MAP(CGLTraceInstruDlg)
+    EASYSIZE(IDC_COLUMNTREE,ES_BORDER,ES_BORDER, ES_BORDER,ES_BORDER,0)
+END_EASYSIZE_MAP
 
 
 // CGLTraceInstruDlg message handlers
 
 BOOL CGLTraceInstruDlg::OnInitDialog()
 {
-	CDialogEx::OnInitDialog();
+	CDialog::OnInitDialog();
 
 	// Add "About..." menu item to system menu.
 
@@ -83,10 +87,8 @@ BOOL CGLTraceInstruDlg::OnInitDialog()
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != NULL)
 	{
-		BOOL bNameValid;
 		CString strAboutMenu;
-		bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
-		ASSERT(bNameValid);
+		strAboutMenu.LoadString(IDS_ABOUTBOX);
 		if (!strAboutMenu.IsEmpty())
 		{
 			pSysMenu->AppendMenu(MF_SEPARATOR);
@@ -101,7 +103,64 @@ BOOL CGLTraceInstruDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 
+	INIT_EASYSIZE;
+
+	// set style for tree view
+	UINT uTreeStyle = TVS_HASBUTTONS|TVS_HASLINES|TVS_LINESATROOT|TVS_CHECKBOXES;
+	m_columnTree.GetTreeCtrl().ModifyStyle(0,uTreeStyle);
+
+	InitTree();
+
 	return TRUE;  // return TRUE  unless you set the focus to a control
+}
+
+void CGLTraceInstruDlg::InitTree()
+{
+	/*
+	 * Set background image (works with owner-drawn tree only)
+	 */
+
+	LVBKIMAGE bk;
+	bk.xOffsetPercent = bk.yOffsetPercent = 70;
+	bk.hbm = LoadBitmap(AfxGetInstanceHandle(),MAKEINTRESOURCE(IDB_BKGND));
+	m_columnTree.GetTreeCtrl().SetBkImage(&bk);
+
+	/*
+	 * Create image list for tree & load icons
+	 */
+
+    m_imgList.Create (16, 16, ILC_COLOR32|ILC_MASK,5,1);
+
+    int id_Group = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_MYCOMPUTER));
+    int id_Item = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_FIXEDDISK));
+
+	// // assign image list to tree control
+	m_columnTree.GetTreeCtrl().SetImageList(&m_imgList,TVSIL_NORMAL);
+
+	/*
+	 *  Insert columns to tree control
+	 */
+	CRect rc;
+	m_columnTree.GetWindowRect(&rc);
+	m_columnTree.InsertColumn(0, _T("OpenGL APIs Functions"), LVCFMT_LEFT, rc.Width());
+
+
+	/*
+	 *  Insert items
+	 */
+
+	HTREEITEM hRoot,hItem;
+	CCustomTreeChildCtrl &ctrl = m_columnTree.GetTreeCtrl();
+	for (int i_g = 0; i_g < sizeof(g_apiGroup)/sizeof(ApiGroup); i_g ++)
+	{
+		ApiGroup g = g_apiGroup[i_g];
+		HTREEITEM hGroup = ctrl.InsertItem(g.szName, id_Group, id_Group);
+		HTREEITEM hFunc = TVI_LAST;
+		for (int i_func = g.i_left; i_func < g.i_right; i_func ++)
+		{
+			hFunc = ctrl.InsertItem(g_glApiNames[i_func], id_Item, id_Item, hGroup, hFunc);
+		}
+	}
 }
 
 void CGLTraceInstruDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -113,7 +172,7 @@ void CGLTraceInstruDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 	else
 	{
-		CDialogEx::OnSysCommand(nID, lParam);
+		CDialog::OnSysCommand(nID, lParam);
 	}
 }
 
@@ -142,7 +201,7 @@ void CGLTraceInstruDlg::OnPaint()
 	}
 	else
 	{
-		CDialogEx::OnPaint();
+		CDialog::OnPaint();
 	}
 }
 
@@ -154,11 +213,48 @@ HCURSOR CGLTraceInstruDlg::OnQueryDragIcon()
 }
 
 
-
-void CGLTraceInstruDlg::OnBnClickedOk()
+void CGLTraceInstruDlg::OnSize(UINT nType, int cx, int cy)
 {
-	// TODO: Add your control notification handler code here
-	//CDialogEx::OnOK();
-	const TCHAR* filePath = _T("D:\\Users\\wanxwang\\advanced_OS\\OpenGLTraceInstru\\test_files\\Triangle_injected.cpp");
-	Inject(filePath);
+	CDialog::OnSize(nType, cx, cy);
+
+	// TODO: Add your message handler code here
+	UPDATE_EASYSIZE;
+
+}
+
+void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
+{
+	CPoint pt;
+	::GetCursorPos(&pt);
+
+	m_columnTree.ScreenToClient(&pt);
+
+
+	CTVHITTESTINFO htinfo;
+	htinfo.pt = pt;
+	HTREEITEM hItem = m_columnTree.HitTest(&htinfo);
+
+	if(hItem)
+	{
+		CString szState;
+
+		if(htinfo.flags&TVHT_ONITEMBUTTON)
+			szState += _T("Clicked on item's button.");
+
+		if(htinfo.flags&TVHT_ONITEMICON)
+			szState += _T("Clicked on item's icon.");
+
+		if(htinfo.flags&TVHT_ONITEMSTATEICON)
+			szState += _T("Clicked on item's state icon.");
+
+		if(htinfo.flags&TVHT_ONITEMINDENT)
+			szState += _T("Clicked on item's indent.");
+
+		if(htinfo.flags&TVHT_ONITEMLABEL)
+			szState += _T("Clicked on item's label.");
+
+		CString szItemText = m_columnTree.GetItemText(hItem, htinfo.iSubItem);
+		MessageBox(szState + _T(" Item text: ") + szItemText);
+	}
+
 }

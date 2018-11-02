@@ -1,21 +1,23 @@
-
-// GLTraceInstruDlg.h : header file
+// DemoMFCDlg.h : header file
 //
 
 #pragma once
-
-
+#include "afxwin.h"
+#include "ColumnTreeCtrl.h"
+#include "EasySize.h"
+#include "afxdialogex.h"
 // CGLTraceInstruDlg dialog
 class CGLTraceInstruDlg : public CDialogEx
 {
 // Construction
 public:
+	DECLARE_EASYSIZE;
 	CGLTraceInstruDlg(CWnd* pParent = NULL);	// standard constructor
 
 // Dialog Data
-	enum { IDD = IDD_GLTRACEINSTRU_DIALOG };
+	enum { IDD = IDD_DEMOMFC_DIALOG };
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
 
@@ -30,5 +32,12 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnBnClickedOk();
+	CColumnTreeCtrl m_columnTree;
+	CImageList m_imgList;
+private:
+	void InitOptions();
+	void InitTree();
+public:
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult);
 };

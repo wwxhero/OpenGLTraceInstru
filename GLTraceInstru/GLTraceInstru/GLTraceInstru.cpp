@@ -1,5 +1,4 @@
-
-// GLTraceInstru.cpp : Defines the class behaviors for the application.
+// DemoMFC.cpp : Defines the class behaviors for the application.
 //
 
 #include "stdafx.h"
@@ -22,9 +21,6 @@ END_MESSAGE_MAP()
 
 CGLTraceInstruApp::CGLTraceInstruApp()
 {
-	// support Restart Manager
-	m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
-
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
 }
@@ -51,13 +47,6 @@ BOOL CGLTraceInstruApp::InitInstance()
 
 	CWinApp::InitInstance();
 
-
-	AfxEnableControlContainer();
-
-	// Create the shell manager, in case the dialog contains
-	// any shell tree view or shell list view controls.
-	CShellManager *pShellManager = new CShellManager;
-
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
 	// of your final executable, you should remove from the following
@@ -81,14 +70,7 @@ BOOL CGLTraceInstruApp::InitInstance()
 		//  dismissed with Cancel
 	}
 
-	// Delete the shell manager created above.
-	if (pShellManager != NULL)
-	{
-		delete pShellManager;
-	}
-
 	// Since the dialog has been closed, return FALSE so that we exit the
 	//  application, rather than start the application's message pump.
 	return FALSE;
 }
-
