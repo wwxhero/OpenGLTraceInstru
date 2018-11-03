@@ -39,7 +39,7 @@
 #define IDC_BTNDIR                      1010
 #define IDC_SRC_PATH                    1011
 #define IDC_PROGRESS1                   1012
-#define IDC_BUTTON1                     1013
+#define IDC_PROGINJECTION               1012
 #define IDC_BTNSTART                    1013
 
 // Next default values for new objects

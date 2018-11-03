@@ -2,12 +2,13 @@
 //
 
 #pragma once
+#include <list>
+#include <set>
 #include "afxwin.h"
 #include "ColumnTreeCtrl.h"
 #include "EasySize.h"
 #include "afxdialogex.h"
-#include <list>
-#include <set>
+#include "afxcmn.h"
 // CGLTraceInstruDlg dialog
 class CGLTraceInstruDlg : public CDialogEx
 {
@@ -38,6 +39,7 @@ protected:
 public:
 	CColumnTreeCtrl m_columnTree;
 	CImageList m_imgList;
+	CProgressCtrl m_progCtrl;
 	std::set<CString> c_setFileFilters;
 private:
 	void InitOptions();

@@ -64,6 +64,7 @@ void CGLTraceInstruDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_COLUMNTREE, m_columnTree);
+	DDX_Control(pDX, IDC_PROGINJECTION, m_progCtrl);
 }
 
 BEGIN_MESSAGE_MAP(CGLTraceInstruDlg, CDialog)
@@ -296,10 +297,17 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 	pEdit->GetWindowTextA(strDirPath);
 	std::list<CString> files;
 	Recurse(strDirPath, files);
+	m_progCtrl.SetRange(0, files.size());
+	int pos = 0;
 	for (std::list<CString>::iterator it = files.begin(); it != files.end(); it ++)
 	{
+		pos ++;
+		m_progCtrl.SetPos(pos);
 		ATLTRACE("%s\n", *it);
+		Sleep(10);
 	}
+	m_progCtrl.SetPos(0);
+	AfxMessageBox("Done!!!");
 }
 
 void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles) const
