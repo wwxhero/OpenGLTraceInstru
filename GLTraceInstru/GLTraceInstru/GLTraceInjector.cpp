@@ -199,17 +199,27 @@ void InjectInternal(const std::set<std::string>& tokens, const MemSrc* src, std:
 			}
 			case parsing_P:
 			{
+				static int s_nParentheis = -1;
+				if (LEFT_PARENTHESIS(*p))
+					s_nParentheis --;
 				if (RIGHT_PARENTHESIS(*p))
 				{
-					if (!param.empty())
-						exp.push_param(param);
-					param.clear();
-					dst->write(p_start, exp.m_src-p_start);
-					p_start = p + 1;
-					std::string exp_t;
-					exp.emitt(exp_t);
-					*dst << exp_t;
-					s = ready;
+					s_nParentheis ++;
+					if (0 == s_nParentheis)
+					{
+						if (!param.empty())
+							exp.push_param(param);
+						param.clear();
+						dst->write(p_start, exp.m_src-p_start);
+						p_start = p + 1;
+						std::string exp_t;
+						exp.emitt(exp_t);
+						*dst << exp_t;
+						s = ready;
+						s_nParentheis = -1;
+					}
+					else
+						param += *p;
 				}
 				else if (COMMA(*p))
 				{

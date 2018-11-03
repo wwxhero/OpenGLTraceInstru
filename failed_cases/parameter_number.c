@@ -1,0 +1,1 @@
+    GLTRACE_VOID_4(glBufferData, GL_ARRAY_BUFFER,  sizeof(data),  data,  GL_STATIC_DRAW);
