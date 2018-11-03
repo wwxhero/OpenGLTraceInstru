@@ -22,7 +22,7 @@ public:
 // Dialog Data
 	enum { IDD = IDD_ABOUTBOX };
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 
 // Implementation
@@ -52,6 +52,12 @@ CGLTraceInstruDlg::CGLTraceInstruDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CGLTraceInstruDlg::IDD, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	const char* c_cpp_suffix[] = {".h", ".hpp", ".c", ".cpp", ".cxx"};
+	for (int i = 0; i < sizeof(c_cpp_suffix)/sizeof(const char*); i ++)
+	{
+		CString str(c_cpp_suffix[i]);
+		c_setFileFilters.insert(str);
+	}
 }
 
 void CGLTraceInstruDlg::DoDataExchange(CDataExchange* pDX)
@@ -66,11 +72,12 @@ BEGIN_MESSAGE_MAP(CGLTraceInstruDlg, CDialog)
 	ON_WM_QUERYDRAGICON()
 	ON_WM_SIZE()
 	ON_BN_CLICKED(IDC_BTNDIR, &CGLTraceInstruDlg::OnBtnClickFilePathSel)
+	ON_BN_CLICKED(IDC_BTNSTART, &CGLTraceInstruDlg::OnBtnClickStartInjection)
 	ON_NOTIFY(NM_RCLICK, IDC_COLUMNTREE, &CGLTraceInstruDlg::OnRclickedColumntree)
 END_MESSAGE_MAP()
 
 BEGIN_EASYSIZE_MAP(CGLTraceInstruDlg)
-    EASYSIZE(IDC_COLUMNTREE,ES_BORDER,ES_BORDER, ES_BORDER,ES_BORDER,0)
+EASYSIZE(IDC_COLUMNTREE, ES_BORDER, ES_BORDER, ES_BORDER, ES_BORDER, 0)
 END_EASYSIZE_MAP
 
 
@@ -108,8 +115,8 @@ BOOL CGLTraceInstruDlg::OnInitDialog()
 	INIT_EASYSIZE;
 
 	// set style for tree view
-	UINT uTreeStyle = TVS_HASBUTTONS|TVS_HASLINES|TVS_LINESATROOT|TVS_CHECKBOXES;
-	m_columnTree.GetTreeCtrl().ModifyStyle(0,uTreeStyle);
+	UINT uTreeStyle = TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_CHECKBOXES;
+	m_columnTree.GetTreeCtrl().ModifyStyle(0, uTreeStyle);
 
 	InitTree();
 
@@ -124,20 +131,20 @@ void CGLTraceInstruDlg::InitTree()
 
 	LVBKIMAGE bk;
 	bk.xOffsetPercent = bk.yOffsetPercent = 70;
-	bk.hbm = LoadBitmap(AfxGetInstanceHandle(),MAKEINTRESOURCE(IDB_BKGND));
+	bk.hbm = LoadBitmap(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDB_BKGND));
 	m_columnTree.GetTreeCtrl().SetBkImage(&bk);
 
 	/*
 	 * Create image list for tree & load icons
 	 */
 
-    m_imgList.Create (16, 16, ILC_COLOR32|ILC_MASK,5,1);
+	m_imgList.Create (16, 16, ILC_COLOR32 | ILC_MASK, 5, 1);
 
-    int id_Group = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_MYCOMPUTER));
-    int id_Item = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_FIXEDDISK));
+	int id_Group = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_MYCOMPUTER));
+	int id_Item = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_FIXEDDISK));
 
 	// // assign image list to tree control
-	m_columnTree.GetTreeCtrl().SetImageList(&m_imgList,TVSIL_NORMAL);
+	m_columnTree.GetTreeCtrl().SetImageList(&m_imgList, TVSIL_NORMAL);
 
 	/*
 	 *  Insert columns to tree control
@@ -151,9 +158,9 @@ void CGLTraceInstruDlg::InitTree()
 	 *  Insert items
 	 */
 
-	HTREEITEM hRoot,hItem;
+	HTREEITEM hRoot, hItem;
 	CCustomTreeChildCtrl &ctrl = m_columnTree.GetTreeCtrl();
-	for (int i_g = 0; i_g < sizeof(g_apiGroup)/sizeof(ApiGroup); i_g ++)
+	for (int i_g = 0; i_g < sizeof(g_apiGroup) / sizeof(ApiGroup); i_g ++)
 	{
 		ApiGroup g = g_apiGroup[i_g];
 		HTREEITEM hGroup = ctrl.InsertItem(g.szName, id_Group, id_Group);
@@ -236,23 +243,23 @@ void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
 	htinfo.pt = pt;
 	HTREEITEM hItem = m_columnTree.HitTest(&htinfo);
 
-	if(hItem)
+	if (hItem)
 	{
 		CString szState;
 
-		if(htinfo.flags&TVHT_ONITEMBUTTON)
+		if (htinfo.flags & TVHT_ONITEMBUTTON)
 			szState += _T("Clicked on item's button.");
 
-		if(htinfo.flags&TVHT_ONITEMICON)
+		if (htinfo.flags & TVHT_ONITEMICON)
 			szState += _T("Clicked on item's icon.");
 
-		if(htinfo.flags&TVHT_ONITEMSTATEICON)
+		if (htinfo.flags & TVHT_ONITEMSTATEICON)
 			szState += _T("Clicked on item's state icon.");
 
-		if(htinfo.flags&TVHT_ONITEMINDENT)
+		if (htinfo.flags & TVHT_ONITEMINDENT)
 			szState += _T("Clicked on item's indent.");
 
-		if(htinfo.flags&TVHT_ONITEMLABEL)
+		if (htinfo.flags & TVHT_ONITEMLABEL)
 			szState += _T("Clicked on item's label.");
 
 		CString szItemText = m_columnTree.GetItemText(hItem, htinfo.iSubItem);
@@ -280,3 +287,71 @@ void CGLTraceInstruDlg::OnBtnClickFilePathSel()
 	}
 	pEdit->SetWindowText(folders);
 }
+
+
+void CGLTraceInstruDlg::OnBtnClickStartInjection()
+{
+	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR);
+	CString strDirPath;
+	pEdit->GetWindowTextA(strDirPath);
+	std::list<CString> files;
+	Recurse(strDirPath, files);
+	for (std::list<CString>::iterator it = files.begin(); it != files.end(); it ++)
+	{
+		ATLTRACE("%s\n", *it);
+	}
+}
+
+void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles) const
+{
+	CFileFind finder;
+
+	// build a string with wildcards
+	CString strWildcard(szPathDir);
+	strWildcard += _T("\\*.*");
+
+	// start working for files
+	BOOL bWorking = finder.FindFile(strWildcard);
+
+	while (bWorking)
+	{
+		bWorking = finder.FindNextFile();
+
+		// skip . and .. files; otherwise, we'd
+		// recur infinitely!
+
+		if (finder.IsDots())
+			continue;
+
+		// if it's a directory, recursively search it
+
+		if (finder.IsDirectory())
+		{
+			CString szPathDir_prime = finder.GetFilePath();
+			TRACE(_T("%s\n"), (LPCTSTR)szPathDir_prime);
+			Recurse(szPathDir_prime, lstFiles);
+		}
+		else
+		{
+			CString fileName = finder.GetFileName();
+			int i_dot = fileName.Find('.', 0);
+			int i_dotn = -1;
+			while (-1 != (i_dotn = fileName.Find('.', i_dot+1)))
+			{
+				i_dot = i_dotn;
+			}
+			if (i_dot > 0)
+			{
+				CString lastName = fileName.Right(fileName.GetLength()-i_dot);
+				if (c_setFileFilters.find(lastName) != c_setFileFilters.end())
+				{
+					CString fileName_full = finder.GetFilePath();
+					lstFiles.push_back(fileName_full);
+				}
+			}
+		}
+	}
+
+	finder.Close();
+}
+
