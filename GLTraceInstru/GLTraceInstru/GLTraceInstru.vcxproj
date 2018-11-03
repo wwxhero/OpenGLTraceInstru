@@ -108,6 +108,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ColumnTreeCtrl.cpp" />
+    <ClCompile Include="GLTraceInjector.cpp" />
     <ClCompile Include="GLTraceInstru.cpp" />
     <ClCompile Include="GLTraceInstruDlg.cpp" />
     <ClCompile Include="OpenGLApisDesc.cpp" />
@@ -118,6 +119,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ColumnTreeCtrl.h" />
+    <ClInclude Include="GLTraceInjector.h" />
     <ClInclude Include="GLTraceInstru.h" />
     <ClInclude Include="GLTraceInstruDlg.h" />
     <ClInclude Include="OpenGLApisDesc.h" />

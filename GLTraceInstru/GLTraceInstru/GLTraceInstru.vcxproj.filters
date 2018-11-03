@@ -30,6 +30,9 @@
     <ClCompile Include="GLTraceInstru.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GLTraceInjector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ColumnTreeCtrl.h">
@@ -48,6 +51,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GLTraceInstru.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GLTraceInjector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

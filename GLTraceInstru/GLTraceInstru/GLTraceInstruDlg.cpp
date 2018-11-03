@@ -6,6 +6,9 @@
 #include "GLTraceInstruDlg.h"
 #include "OpenGLApisDesc.h"
 #include <ShObjIdl.h>
+#include <string>
+#include <queue>
+#include "GLTraceInjector.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -53,7 +56,7 @@ CGLTraceInstruDlg::CGLTraceInstruDlg(CWnd* pParent /*=NULL*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	const char* c_cpp_suffix[] = {".h", ".hpp", ".c", ".cpp", ".cxx"};
-	for (int i = 0; i < sizeof(c_cpp_suffix)/sizeof(const char*); i ++)
+	for (int i = 0; i < sizeof(c_cpp_suffix) / sizeof(const char*); i ++)
 	{
 		CString str(c_cpp_suffix[i]);
 		c_setFileFilters.insert(str);
@@ -292,9 +295,53 @@ void CGLTraceInstruDlg::OnBtnClickFilePathSel()
 
 void CGLTraceInstruDlg::OnBtnClickStartInjection()
 {
+	std::set<std::string> tokens;
+	CTreeCtrl& treeCtrl = m_columnTree.GetTreeCtrl();
+	HTREEITEM h_node = treeCtrl.GetChildItem(TVI_ROOT);
+	std::queue<HTREEITEM> q_n;
+	while (h_node != NULL)
+	{
+		// Get the text for the item. Notice we use TVIF_TEXT because
+		// we want to retrieve only the text, but also specify TVIF_HANDLE
+		// because we're getting the item by its handle.
+		if (treeCtrl.GetCheck(h_node))
+		{
+			TVITEM item;
+			std::string token = treeCtrl.GetItemText(h_node);
+			tokens.insert(token);
+		}
+		// Try to get the next item
+		q_n.push(h_node);
+		h_node = treeCtrl.GetNextItem(h_node, TVGN_NEXT);
+	}
+
+	while (!q_n.empty())
+	{
+		HTREEITEM h_parent = q_n.front();
+		q_n.pop();
+		HTREEITEM h_child = treeCtrl.GetChildItem(h_parent);
+		while (NULL != h_child)
+		{
+			if (treeCtrl.GetCheck(h_child))
+			{
+				TVITEM item;
+				std::string token = treeCtrl.GetItemText(h_child);
+				tokens.insert(token);
+			}
+			// Try to get the next item
+			q_n.push(h_child);
+			h_child = treeCtrl.GetNextItem(h_child, TVGN_NEXT);
+		}
+	}
+
 	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR);
 	CString strDirPath;
 	pEdit->GetWindowTextA(strDirPath);
+	if (strDirPath.IsEmpty())
+	{
+		AfxMessageBox("Please select a source file directory");
+		return;
+	}
 	std::list<CString> files;
 	Recurse(strDirPath, files);
 	m_progCtrl.SetRange(0, files.size());
@@ -303,8 +350,7 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 	{
 		pos ++;
 		m_progCtrl.SetPos(pos);
-		ATLTRACE("%s\n", *it);
-		Sleep(10);
+		Inject(*it, tokens);
 	}
 	m_progCtrl.SetPos(0);
 	AfxMessageBox("Done!!!");
@@ -336,7 +382,6 @@ void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles)
 		if (finder.IsDirectory())
 		{
 			CString szPathDir_prime = finder.GetFilePath();
-			TRACE(_T("%s\n"), (LPCTSTR)szPathDir_prime);
 			Recurse(szPathDir_prime, lstFiles);
 		}
 		else
@@ -344,13 +389,13 @@ void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles)
 			CString fileName = finder.GetFileName();
 			int i_dot = fileName.Find('.', 0);
 			int i_dotn = -1;
-			while (-1 != (i_dotn = fileName.Find('.', i_dot+1)))
+			while (-1 != (i_dotn = fileName.Find('.', i_dot + 1)))
 			{
 				i_dot = i_dotn;
 			}
 			if (i_dot > 0)
 			{
-				CString lastName = fileName.Right(fileName.GetLength()-i_dot);
+				CString lastName = fileName.Right(fileName.GetLength() - i_dot);
 				if (c_setFileFilters.find(lastName) != c_setFileFilters.end())
 				{
 					CString fileName_full = finder.GetFilePath();

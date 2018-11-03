@@ -235,17 +235,12 @@ void InjectInternal(const std::set<std::string>& tokens, const MemSrc* src, std:
 #undef A_LETTER
 }
 
-void Inject(const char* filePath)
+void Inject(const char* filePath, const std::set<std::string>& tokens)
 {
 	MemSrc memSrc;
 	bool loaded = LoadFile(filePath, &memSrc);
 	ASSERT(loaded);
 	std::ostringstream memDst;
-///for testing
-	std::set<std::string> tokens;
-	tokens.insert("glDrawArrays");
-	tokens.insert("glClear");
-/////////
 	InjectInternal(tokens, &memSrc, &memDst);
 	UnLoad(&memSrc);
 	std::ofstream fOut(filePath, std::ios::binary|std::ios::out);
