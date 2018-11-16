@@ -1,0 +1,3 @@
+GLAPI void APIENTRY glVertexAttribI (GLuint index, GLuint x, GLuint y, GLuint z, GLuint w);
+GLAPI void APIENTRY glxyz (GLuint index, GLuint x, GLuint y, GLuint z, GLuint w);
+GLAPI void APIENTRY glxyz	(int index, GLuint x, GLuint y, GLuint z, GLuint w);
