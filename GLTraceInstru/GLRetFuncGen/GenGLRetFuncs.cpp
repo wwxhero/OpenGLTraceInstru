@@ -13,6 +13,8 @@
 #define A_LETTER(c)\
 	(c > 'A'-1 && c <'Z'+1)\
 	|| (c > 'a'-1 && c < 'z'+1)
+#define A_NUMBER(c)\
+	(c > '0'-1 && c < '9'+1)
 #define LEFT_PARENTHESIS(c)\
 	('(' == c)
 #define RIGHT_PARENTHESIS(c)\
@@ -26,6 +28,7 @@
 #define LINEBR(p)\
 	((*p == '\n')\
 	|| (*p == '\r' && *(p+1) == '\n'))
+
 
 #define FIX_MATCH_CONSTRU(p)\
 		p, sizeof(p)-1
@@ -215,8 +218,28 @@ public:
 		m_range[1] = p;
 		return matched;
 	}
+};
 
+class NameMatch : public PatternMatch
+{
+public:
+	NameMatch()
+	{
 
+	}
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		m_range[0] = p;
+		bool matched = (A_LETTER(*p)
+					|| *p == '_');
+		while( (A_LETTER(*p)
+				|| *p == '_'
+				|| A_NUMBER(*p))
+		   && p < end)
+			p ++;
+		m_range[1] = p;
+		return matched;
+	}
 };
 
 
@@ -234,7 +257,7 @@ void PatternMatchRecur(const char*& p, unsigned int& size, std::list<Func*>& lst
 		const char pattern5[] = "APIENTRY";
 		FixMatch m5(FIX_MATCH_CONSTRU(pattern5));
 		BlankMatchPlus m6;
-		LetterMatch m7;
+		NameMatch m7;
 		BlankMatchStar m8;
 		const char pattern9[] = "(";
 		FixMatch m9(FIX_MATCH_CONSTRU(pattern9));
@@ -265,7 +288,7 @@ void PatternMatchRecur(const char*& p, unsigned int& size, std::list<Func*>& lst
 					BlankMatchStar m10;
 					LetterMatch m11;
 					BlankMatchPlus m12;
-					LetterMatch m13;
+					NameMatch m13;
 					BlankMatchStar m14;
 					std::vector<PatternMatch*> m_param;
 					if (m_params.size() > 0)
