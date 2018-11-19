@@ -157,48 +157,112 @@ private:
 	unsigned int m_len;
 };
 
-class BlankMatchPlus : public PatternMatch
+
+class BlankMatch : public PatternMatch
 {
 public:
-	BlankMatchPlus()
+	BlankMatch()
 	{
 
 	}
 	virtual bool Match(const char*& p, const char* end) override
 	{
-		bool matched = (*p == ' ' || *p == '\t');
-		bool matching = matched;
 		m_range[0] = p;
-		while (matching
-			&& p < end)
-		{
+		bool match = (SPACE(*p)
+					|| TAB(*p));
+		if (match)
 			p ++;
-			matching = (SPACE(*p) || TAB(*p));
-		}
 		m_range[1] = p;
-		return matched;
+		return match;
 	}
-
 };
 
-class BlankMatchStar : public PatternMatch
+template<class TMatch>
+class Star : public PatternMatch
 {
 public:
-	BlankMatchStar()
+	Star(TMatch* m) : m_pMatch(m)
 	{
-
 	}
 	virtual bool Match(const char*& p, const char* end) override
 	{
 		m_range[0] = p;
-		while ((SPACE(*p)
-				|| TAB(*p))
-			 && p < end)
-			p ++;
+		while(m_pMatch->Match(p, end));
 		m_range[1] = p;
 		return true;
 	}
+private:
+	TMatch* m_pMatch;
+};
 
+typedef Star<BlankMatch> BlankMatchStar;
+
+template<class TMatch>
+class Plus : public PatternMatch
+{
+public:
+	Plus(TMatch* m) : m_pMatch(m)
+	{
+	}
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		m_range[0] = p;
+		int i = 0;
+		while (m_pMatch->Match(p, end))
+			i ++;
+		m_range[1] = p;
+		return i > 0;
+	}
+private:
+	TMatch* m_pMatch;
+};
+
+typedef Plus<BlankMatch> BlankMatchPlus;
+
+class Or : public PatternMatch
+{
+public:
+	Or(PatternMatch** m, unsigned int n) : m_arr(m)
+										, m_n(n)
+	{
+	}
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		bool match = false;
+		for (unsigned int i = 0; i < m_n && !match; i ++)
+		{
+			match = (m_arr[i]->Match(p, end));
+			if (match)
+				m_arr[i]->Range(m_range);
+		}
+		return match;
+	}
+private:
+	PatternMatch** m_arr;
+	unsigned int m_n;
+};
+
+class And : public PatternMatch
+{
+public:
+	And(PatternMatch** m, unsigned int n) : m_arr(m)
+										, m_n(n)
+	{
+	}
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		bool match = true;
+		m_range[0] = p;
+		for (unsigned int i = 0; i < m_n && match; i ++)
+		{
+			match = (m_arr[i]->Match(p, end));
+		}
+		m_range[1] = p;
+		return match;
+	}
+private:
+	PatternMatch** m_arr;
+	unsigned int m_n;
 };
 
 class LetterMatch : public PatternMatch
@@ -242,23 +306,71 @@ public:
 	}
 };
 
+class TypeMatch : public PatternMatch
+{
+public:
+	TypeMatch()
+	{
+
+	}
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		m_range[0] = p;
+		bool match = true;
+
+		FixMatch m1(FIX_MATCH_CONSTRU("const"));
+		BlankMatch m2;
+		Plus<BlankMatch> m3(&m2);
+		//m1 -> m2: const<blank>
+		match = (!m1.Match(p, end) || m3.Match(p, end));
 
 
-void PatternMatchRecur(const char*& p, unsigned int& size, std::list<Func*>& lstFuncs)
+		NameMatch m4;
+		match = (match
+			  && m4.Match(p, end));
+
+		if (match)
+		{
+			m_range[1] = p;
+			BlankMatch m0;
+			Star<BlankMatch> m1(&m0);
+			FixMatch m2(FIX_MATCH_CONSTRU("*"));
+			FixMatch m3(FIX_MATCH_CONSTRU("&"));
+			PatternMatch* g[] = {&m2, &m3};
+			Or m4(g, 2);
+			Plus<Or> m5(&m4);
+			Star<BlankMatch> m6(&m0);
+			PatternMatch* g2[] = {&m1, &m5, &m6};
+			And m_and(g2, 3);
+			Plus<And> andPlus(&m_and);
+			if (andPlus.Match(p, end))
+				m_range[1] = p;
+			else
+				p = m_range[1];
+
+		}
+		return match;
+	}
+};
+
+
+
+
+
+
+void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& lstFuncs)
 {
 	if (size > 0)
 	{
-		const char pattern1[] = "GLAPI";
-
-		FixMatch m1(FIX_MATCH_CONSTRU(pattern1));
-		BlankMatchPlus m2;
-		LetterMatch m3;
-		BlankMatchPlus m4;
-		const char pattern5[] = "APIENTRY";
-		FixMatch m5(FIX_MATCH_CONSTRU(pattern5));
-		BlankMatchPlus m6;
+		FixMatch m1(FIX_MATCH_CONSTRU("GLAPI"));
+		BlankMatch m_blank;
+		BlankMatchPlus m2(&m_blank);
+		TypeMatch m3;
+		BlankMatchStar m4(&m_blank);
+		FixMatch m5(FIX_MATCH_CONSTRU("APIENTRY"));
+		BlankMatchPlus m6(&m_blank);
 		NameMatch m7;
-		BlankMatchStar m8;
+		BlankMatchStar m8(&m_blank);
 		const char pattern9[] = "(";
 		FixMatch m9(FIX_MATCH_CONSTRU(pattern9));
 		PatternMatch* m[] = {&m1, &m2, &m3, &m4, &m5, &m6, &m7, &m8, &m9};
@@ -276,40 +388,49 @@ void PatternMatchRecur(const char*& p, unsigned int& size, std::list<Func*>& lst
 		std::vector<PatternMatch> m_params;
 		if (match) //parse for parameter list
 		{
-
-			while (match)
+			BlankMatchStar m_10(&m_blank);
+			FixMatch m_11(FIX_MATCH_CONSTRU("void"));
+			BlankMatchStar m_12(&m_blank);
+			FixMatch m_13(FIX_MATCH_CONSTRU(")"));
+			PatternMatch* g_2[] = {&m_10, &m_11, &m_12, &m_13};
+			And m_and(g_2, 4);
+			if (!m_and.Match(p_matching, p_end))
 			{
-				const char pattern[] = ")";
-				FixMatch m_n(FIX_MATCH_CONSTRU(pattern));
-				if (!m_n.Match(p_matching, p_end))
+				while (match)
 				{
-					const char patter13[] = ",";
-					FixMatch m15(FIX_MATCH_CONSTRU(patter13));
-					BlankMatchStar m10;
-					LetterMatch m11;
-					BlankMatchPlus m12;
-					NameMatch m13;
-					BlankMatchStar m14;
-					std::vector<PatternMatch*> m_param;
-					if (m_params.size() > 0)
-						m_param.push_back(&m15);
-					m_param.push_back(&m10);
-					m_param.push_back(&m11);
-					m_param.push_back(&m12);
-					m_param.push_back(&m13);
-					m_param.push_back(&m14);
+					const char pattern[] = ")";
+					FixMatch m_n(FIX_MATCH_CONSTRU(pattern));
+					if (!m_n.Match(p_matching, p_end))
+					{
+						const char patter13[] = ",";
+						FixMatch m15(FIX_MATCH_CONSTRU(patter13));
+						BlankMatchStar m10(&m_blank);
+						TypeMatch m11;
+						BlankMatchStar m12(&m_blank);
+						NameMatch m13;
+						BlankMatchStar m14(&m_blank);
+						std::vector<PatternMatch*> m_param;
+						if (m_params.size() > 0)
+							m_param.push_back(&m15);
+						m_param.push_back(&m10);
+						m_param.push_back(&m11);
+						m_param.push_back(&m12);
+						m_param.push_back(&m13);
+						m_param.push_back(&m14);
 
-					for (int i_m = 0
-						; match && i_m < m_param.size()
-						; i_m ++)
-						match = m_param[i_m]->Match(p_matching, p_end);
+						for (int i_m = 0
+							; match && i_m < m_param.size()
+							; i_m ++)
+							match = m_param[i_m]->Match(p_matching, p_end);
 
-					m_params.push_back(m11);
-					m_params.push_back(m13);
+						m_params.push_back(m11);
+						m_params.push_back(m13);
+					}
+					else
+						break;
 				}
-				else
-					break;
 			}
+
 		}
 
 		const char *p_prime;
@@ -343,7 +464,7 @@ void PatternMatchRecur(const char*& p, unsigned int& size, std::list<Func*>& lst
 		}
 		p = p_prime;
 		size = size_prime;
-		//PatternMatchRecur(p_prime, size_prime, lstFuncs);
+		//PatternMatchIntera(p_prime, size_prime, lstFuncs);
 		//GLAPI +[A-Z|a-z]+ +APIENTRY +[A-Z|a-z]+ *\( *[A-Z|a-z]+ +[A-Z|a-z] * ,
 		//1		2         3 4   5     6         7 8 9 10      11 12      13 14 15
 		//GLAPI GLboolean APIENTRY glIsProgram (GLuint program);
@@ -362,12 +483,33 @@ void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFunc
 	unsigned int size = mem->size;
 	const char* p_end = p + size;
 	while (p < p_end)
-		PatternMatchRecur(p, size, lstFuncs);
+		PatternMatchIntera(p, size, lstFuncs);
 
 #ifdef TEST
-	printf ("FuncObject Generated:");
 	std::list<Func*>::iterator it = lstFuncs.begin();
 	char output[1024] = {0};
+	printf("const char* g_glApiNames[] = \n");
+	printf("\t\t\t{\n");
+	for (; it != lstFuncs.end(); it ++)
+	{
+		Func* func = *it;
+		//strncpy(output, func->funcName[0], func->funcName[1]-func->funcName[0]);
+		char* d = output;
+		const char* s = func->funcName[0];
+		for (
+			; s < func->funcName[1]
+			; s ++, d++)
+			*d = *s;
+		*d = '\0';
+
+		printf("\t\t\t\"%s\"\n", output);
+	}
+	printf("\t\t\t}\n");
+	printf ("FuncObject Generated:");
+
+	int n_void = 0;
+
+	it = lstFuncs.begin();
 	for (; it != lstFuncs.end(); it ++)
 	{
 		char *out = output;
@@ -382,6 +524,8 @@ void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFunc
 		{
 			*out = *src;
 		}
+		if (0 == strncmp(func->retType[0], "void", func->retType[1]-func->retType[0]))
+			n_void ++;
 
 		*out = '\t';
 		out ++;
@@ -424,7 +568,7 @@ void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFunc
 		*out = '\0';
 		printf (output);
 	}
-
+	printf("\n\t%d functions in total, %d void function", lstFuncs.size(), n_void);
 #endif
 }
 
