@@ -21,7 +21,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	//void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs);
 	//GenFuncsImpl(definiPath, &mem, lstFuncs);
 	//void EndParse4Funcs(MemSrc* mem);
-	EndParse4Funcs(&mem);
+	EndParse4Funcs(&mem, lstFuncs);
 	return 0;
 }
 

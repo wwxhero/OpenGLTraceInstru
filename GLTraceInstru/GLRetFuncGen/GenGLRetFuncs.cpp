@@ -137,6 +137,7 @@ public:
 	}
 	virtual bool Match(const char*& p, const char* end) override
 	{
+		m_range[0] = p;
 		const char*& s = p;
 		const char*  s_e = end;
 		const char*  d_e = m_pattern + m_len;
@@ -147,7 +148,6 @@ public:
 			match = ((*d) == (*s));
 		if (!match)
 			s --;
-		m_range[0] = p;
 		m_range[1] = s;
 		return match;
 	}
@@ -572,12 +572,64 @@ void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFunc
 #endif
 }
 
-void EndParse4Funcs(struct MemSrc_t* mem)
+void EndParse4Funcs(struct MemSrc_t* mem, std::list<Func*>& lstFuncs)
 {
+	for (std::list<Func*>::iterator it = lstFuncs.begin()
+		; it != lstFuncs.end()
+		; it ++)
+	{
+		Func* f = *it;
+		free(f->params);
+		free(f);
+	}
+	UnLoad(mem);
 }
 
 void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs)
 {
+#define MAK_STRING(r)\
+	r[0], r[1]-r[0]
+
+	std::ofstream fOut(szPath, std::ios::binary|std::ios::out);
+	for (std::list<Func*>::const_iterator it = lstFuncs.begin()
+		; it != lstFuncs.end()
+		; it ++)
+	{
+		Func* func = *it;
+
+		fOut << "typedef "
+			 << std::string(MAK_STRING(func->retType))
+			 << " ("
+			 << std::string(MAK_STRING(func->callConven))
+			 << "* FP"<< std::string(MAK_STRING(func->funcName))
+			 << ")"
+			 << "(";
+		for (unsigned int i_param = 0; i_param < func->numParams; i_param ++)
+		{
+			if (i_param >  0)
+				fOut <<", ";
+			fOut << std::string(MAK_STRING(func->params[i_param].paramType))
+				 << " "
+				 << std::string(MAK_STRING(func->params[i_param].paramName));
+		}
+		fOut << ");" << std::endl;
+
+		fOut << "_GLTRACER_API "
+			 << std::string(MAK_STRING(func->retType))
+			 << " GLTrace_"<<std::string(MAK_STRING(func->funcName))
+			 << "("
+			 << "FP"<< std::string(MAK_STRING(func->funcName))<<" proc";
+
+		for (unsigned int i_param = 0; i_param < func->numParams; i_param ++)
+		{
+			fOut << ", "
+				 << std::string(MAK_STRING(func->params[i_param].paramType))
+				 << " "
+				 << std::string(MAK_STRING(func->params[i_param].paramName));
+		}
+
+		fOut << ", const char* fileName, unsigned int lineNum);" << std::endl;
+	}
 }
 void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs)
 {

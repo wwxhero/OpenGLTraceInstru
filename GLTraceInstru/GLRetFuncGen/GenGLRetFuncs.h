@@ -31,6 +31,6 @@ typedef struct MemSrc_t
 void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFuncs);
 void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs);
 void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs);
-void EndParse4Funcs(MemSrc* mem);
+void EndParse4Funcs(MemSrc* mem, std::list<Func*>& lstFuncs);
 
 #endif
