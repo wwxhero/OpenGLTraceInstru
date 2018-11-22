@@ -297,7 +297,6 @@ void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 #define MAK_STRING(r)\
 	r[0], r[1]-r[0]
 
-	FixMatch voidMatch(FIX_MATCH_CONSTRU("void"));
 	std::ofstream fOut(szPath, std::ios::binary|std::ios::out);
 	for (std::list<Func*>::const_iterator it = lstFuncs.begin()
 		; it != lstFuncs.end()
@@ -306,9 +305,6 @@ void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 		Func* func = *it;
 
 		const char* p = func->retType[0];
-		bool voidRet = (voidMatch.Match(p, func->retType[1]));
-		if (voidRet)
-			continue;
 
 		fOut << "typedef "
 			 << std::string(MAK_STRING(func->retType))
@@ -323,7 +319,7 @@ void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 				fOut <<", ";
 			fOut << std::string(MAK_STRING(func->params[i_param].paramType))
 				 << " "
-				 << std::string(MAK_STRING(func->params[i_param].paramName));
+				 << "a_" << std::string(MAK_STRING(func->params[i_param].paramName));
 		}
 		fOut << ");" << std::endl;
 
@@ -338,7 +334,7 @@ void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 			fOut << ", "
 				 << std::string(MAK_STRING(func->params[i_param].paramType))
 				 << " "
-				 << std::string(MAK_STRING(func->params[i_param].paramName));
+				 << "a_" << std::string(MAK_STRING(func->params[i_param].paramName));
 		}
 
 		fOut << ", const char* fileName, unsigned int lineNum);" << std::endl;
@@ -360,8 +356,7 @@ void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 
 		const char* p = func->retType[0];
 		bool voidRet = (voidMatch.Match(p, func->retType[1]));
-		if (voidRet)
-			continue;
+
 
 		fOut << std::string(MAK_STRING(func->retType))
 			 << " GLTrace_"<<std::string(MAK_STRING(func->funcName))
@@ -373,7 +368,7 @@ void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 			fOut << ", "
 				 << std::string(MAK_STRING(func->params[i_param].paramType))
 				 << " "
-				 << std::string(MAK_STRING(func->params[i_param].paramName));
+				 << "a_" << std::string(MAK_STRING(func->params[i_param].paramName));
 		}
 
 		fOut << ", const char* fileName, unsigned int lineNum)" << std::endl;
@@ -382,18 +377,21 @@ void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 		fOut << "{" << std::endl
 			 << "\tLogItem* item = FuncLogStart(\"" << std::string(MAK_STRING(func->funcName)) <<"\", fileName, lineNum);" <<std::endl;
 
-
-
-		fOut << "\tauto ret = proc(";
+		if (voidRet)
+			fOut << "\tproc(";
+		else
+			fOut << "\tauto ret = proc(";
 							for (unsigned int i_param = 0; i_param < func->numParams; i_param ++)
 							{
 								if (i_param > 0)
 									fOut << ", ";
-								fOut << std::string(MAK_STRING(func->params[i_param].paramName));
+								fOut << "a_" << std::string(MAK_STRING(func->params[i_param].paramName));
 							}
 							fOut << "); " << std::endl;
 		fOut << "\tFuncLogEnd(item);" << std::endl;
-		fOut << "\treturn ret;" << std::endl;
+
+		if (!voidRet)
+			fOut << "\treturn ret;" << std::endl;
 
 
 		fOut << "}" << std::endl << std::endl;
