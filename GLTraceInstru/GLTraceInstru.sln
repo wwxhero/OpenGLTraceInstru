@@ -5,6 +5,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GLTraceInstru", "GLTraceIns
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GLRetFuncGen", "GLRetFuncGen\GLRetFuncGen.vcxproj", "{DA37AC11-9CF3-4FA2-AD67-0D75E509F4B3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GLFuncs", "GLFuncs\GLFuncs.vcxproj", "{75278CF4-B2AD-4A4E-93F6-0AAE1E16B8B9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -19,6 +21,10 @@ Global
 		{DA37AC11-9CF3-4FA2-AD67-0D75E509F4B3}.Debug|Win32.Build.0 = Debug|Win32
 		{DA37AC11-9CF3-4FA2-AD67-0D75E509F4B3}.Release|Win32.ActiveCfg = Release|Win32
 		{DA37AC11-9CF3-4FA2-AD67-0D75E509F4B3}.Release|Win32.Build.0 = Release|Win32
+		{75278CF4-B2AD-4A4E-93F6-0AAE1E16B8B9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{75278CF4-B2AD-4A4E-93F6-0AAE1E16B8B9}.Debug|Win32.Build.0 = Debug|Win32
+		{75278CF4-B2AD-4A4E-93F6-0AAE1E16B8B9}.Release|Win32.ActiveCfg = Release|Win32
+		{75278CF4-B2AD-4A4E-93F6-0AAE1E16B8B9}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
