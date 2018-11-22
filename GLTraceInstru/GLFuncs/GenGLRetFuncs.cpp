@@ -65,7 +65,7 @@ void UnLoad(MemSrc* mem)
 }
 
 
-void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& lstFuncs)
+void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& lstFuncs, const char* version[2])
 {
 	if (size > 0)
 	{
@@ -145,6 +145,7 @@ void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& ls
 		if (match)
 		{
 			Func *func = (Func *)malloc(sizeof(Func));
+			memcpy(func->version, version, sizeof(func->version));
 			m3.Range(func->retType);
 			m5.Range(func->callConven);
 			m7.Range(func->funcName);
@@ -181,6 +182,41 @@ void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& ls
 	}
 }
 
+bool UpdateVersion(const char*& p, unsigned int& size, const char* version[2])
+{
+	//#define +GL_VERSION_[0-9]+_[0-9]+ +
+	if (size > 0)
+	{
+		FixMatch m1(FIX_MATCH_CONSTRU("#define"));
+		BlankMatch m_blank;
+		BlankMatchPlus m2(&m_blank);
+		FixMatch m3(FIX_MATCH_CONSTRU("GL_VERSION_"));
+		NumberMatch m_number;
+		Plus<NumberMatch> m4(&m_number);
+		FixMatch m5(FIX_MATCH_CONSTRU("_"));
+		Plus<NumberMatch> m6(&m_number);
+		BlankMatchPlus m7(&m_blank);
+		PatternMatch* mg[] = {&m1, &m2, &m3, &m4, &m5, &m6, &m7};
+		And m(mg, 7);
+		const char* p_end = p + size;
+		const char* p_start = p;
+		bool match = m.Match(p, p_end);
+		if (match)
+		{
+			const char* left[2] = {0};
+			const char* right[2] = {0};
+			m3.Range(left);
+			m6.Range(right);
+			version[0] = left[0];
+			version[1] = right[1];
+		}
+		else
+			p = p_start;
+		return match;
+	}
+	else
+		return false;
+}
 
 void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFuncs)
 {
@@ -189,8 +225,12 @@ void StartParse4Funcs(const char* szPath, MemSrc* mem, std::list<Func*>& lstFunc
 	const char* p = mem->p;
 	unsigned int size = mem->size;
 	const char* p_end = p + size;
+	const char* version[2] = {0};
 	while (p < p_end)
-		PatternMatchIntera(p, size, lstFuncs);
+	{
+		if (!UpdateVersion(p, size, version))
+			PatternMatchIntera(p, size, lstFuncs, version);
+	}
 
 #ifdef TEST
 	std::list<Func*>::iterator it = lstFuncs.begin();
@@ -290,6 +330,7 @@ void EndParse4Funcs(struct MemSrc_t* mem, std::list<Func*>& lstFuncs)
 		free(f);
 	}
 	UnLoad(mem);
+	lstFuncs.clear();
 }
 
 void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs)

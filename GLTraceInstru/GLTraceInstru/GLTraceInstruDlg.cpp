@@ -75,6 +75,8 @@ BEGIN_MESSAGE_MAP(CGLTraceInstruDlg, CDialog)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_SIZE()
+	ON_WM_DESTROY()
+	ON_BN_CLICKED(IDC_BTNGLHEADER, &CGLTraceInstruDlg::OnBtnClickHeaderSel)
 	ON_BN_CLICKED(IDC_BTNDIR, &CGLTraceInstruDlg::OnBtnClickFilePathSel)
 	ON_BN_CLICKED(IDC_BTNSTART, &CGLTraceInstruDlg::OnBtnClickStartInjection)
 	ON_NOTIFY(NM_RCLICK, IDC_COLUMNTREE, &CGLTraceInstruDlg::OnRclickedColumntree)
@@ -270,6 +272,52 @@ void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
 		MessageBox(szState + _T(" Item text: ") + szItemText);
 	}
 
+}
+
+
+void CGLTraceInstruDlg::OnBtnClickHeaderSel()
+{
+	// szFilters is a text string that includes two file name filters:
+	// "*.my" for "MyType Files" and "*.*' for "All Files."
+	TCHAR szFilters[] = _T("GL Header File |*.h;*.hpp|All Files (*.*)|*.*||");
+
+	// Create an Open dialog; the default file name extension is ".my".
+	CFileDialog fileDlg(TRUE, _T("h"), _T("gl3.h"),
+	                    OFN_FILEMUSTEXIST | OFN_HIDEREADONLY, szFilters);
+
+	// Display the file dialog. When user clicks OK, fileDlg.DoModal()
+	// returns IDOK.
+	if (fileDlg.DoModal() == IDOK)
+	{
+		CString pathName = fileDlg.GetPathName();
+		CWnd *pWnd = GetDlgItem(IDC_EDTGLHEADER);
+		pWnd->SetWindowText(pathName);
+		if (!m_lstFuncsGLHeader.empty())
+			EndParse4Funcs(&m_memGLHeader, m_lstFuncsGLHeader);
+		StartParse4Funcs(pathName, &m_memGLHeader, m_lstFuncsGLHeader);
+#ifdef TEST_START_PARSE
+		char func_name[1024] = {0};
+		char version[1024] = {0};
+		for (std::list<Func*>::const_iterator it = m_lstFuncsGLHeader.begin()
+		        ; it != m_lstFuncsGLHeader.end()
+		        ; it ++)
+		{
+			Func* func = *it;
+			strncpy(func_name, func->funcName[0], func->funcName[1] - func->funcName[0]);
+			strncpy(version, func->version[0], func->version[1] - func->version[0]);
+			ATLTRACE(_T("%s:%s\n"), version, func_name);
+		}
+#endif
+
+	}
+
+}
+
+void CGLTraceInstruDlg::OnDestroy()
+{
+	if (!m_lstFuncsGLHeader.empty())
+		EndParse4Funcs(&m_memGLHeader, m_lstFuncsGLHeader);
+	CDialog::OnDestroy();
 }
 
 void CGLTraceInstruDlg::OnBtnClickFilePathSel()

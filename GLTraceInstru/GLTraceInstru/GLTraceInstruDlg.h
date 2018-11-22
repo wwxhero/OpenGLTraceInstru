@@ -9,6 +9,7 @@
 #include "EasySize.h"
 #include "afxdialogex.h"
 #include "afxcmn.h"
+#include "GenGLRetFuncs.h"
 // CGLTraceInstruDlg dialog
 class CGLTraceInstruDlg : public CDialogEx
 {
@@ -33,8 +34,10 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	afx_msg void OnBtnClickHeaderSel();
 	afx_msg void OnBtnClickFilePathSel();
 	afx_msg void OnBtnClickStartInjection();
+	afx_msg void OnDestroy();
 	DECLARE_MESSAGE_MAP()
 public:
 	CColumnTreeCtrl m_columnTree;
@@ -47,4 +50,7 @@ private:
 	void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles) const;
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult);
+private:
+	std::list<Func*> m_lstFuncsGLHeader;
+	MemSrc	 m_memGLHeader;
 };

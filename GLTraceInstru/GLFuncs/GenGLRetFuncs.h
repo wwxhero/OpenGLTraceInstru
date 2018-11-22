@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _GLTRACE_INJECTOR_H
-#define _GLTRACE_INJECTOR_H
+#ifndef _GENGLRET_FUNCS_H
+#define _GENGLRET_FUNCS_H
 #include <list>
 #ifndef GLFUNCS_EXPORTS
 #define FUNCS_API __declspec(dllimport)
@@ -9,6 +9,7 @@
 #endif
 typedef struct Func_t
 {
+	const char* version[2];
 	const char* retType[2];
 	const char* callConven[2];
 	const char* funcName[2];

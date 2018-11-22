@@ -76,6 +76,21 @@ private:
 	unsigned int m_len;
 };
 
+class NumberMatch : public PatternMatch
+{
+public:
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		bool match = false;
+		if (p < end)
+			match = A_NUMBER(*p);
+		if (match)
+			p ++;
+		return match;
+	}
+private:
+
+};
 
 class BlankMatch : public PatternMatch
 {
@@ -86,13 +101,18 @@ public:
 	}
 	virtual bool Match(const char*& p, const char* end) override
 	{
-		m_range[0] = p;
-		bool match = (SPACE(*p)
-					|| TAB(*p));
-		if (match)
-			p ++;
-		m_range[1] = p;
-		return match;
+		if (p < end)
+		{
+			m_range[0] = p;
+			bool match = (SPACE(*p)
+						|| TAB(*p));
+			if (match)
+				p ++;
+			m_range[1] = p;
+			return match;
+		}
+		else
+			return false;
 	}
 };
 
