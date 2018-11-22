@@ -36,10 +36,12 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	afx_msg void OnBtnClickLoggerPathSel();
 	afx_msg void OnBtnClickHeaderSel();
 	afx_msg void OnBtnClickFilePathSel();
 	afx_msg void OnBtnClickStartInjection();
 	afx_msg void OnDestroy();
+	afx_msg void OnUpdateBtns(CCmdUI* cmdUI);
 	DECLARE_MESSAGE_MAP()
 public:
 	CColumnTreeCtrl m_columnTree;
@@ -54,6 +56,7 @@ private:
 	void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles) const;
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult);
+	afx_msg LRESULT OnKickIdle(WPARAM, LPARAM);
 private:
 	class ItemFunc
 	{
