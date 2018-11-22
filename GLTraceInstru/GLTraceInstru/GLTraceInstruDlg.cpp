@@ -4,11 +4,11 @@
 #include "stdafx.h"
 #include "GLTraceInstru.h"
 #include "GLTraceInstruDlg.h"
-#include "OpenGLApisDesc.h"
 #include <ShObjIdl.h>
 #include <string>
 #include <queue>
 #include "GLTraceInjector.h"
+#include "PatternMatch.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -129,6 +129,72 @@ BOOL CGLTraceInstruDlg::OnInitDialog()
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
+void CGLTraceInstruDlg::ClearTree()
+{
+	CTreeCtrl& treeCtrl = m_columnTree.GetTreeCtrl();
+	HTREEITEM h_node = treeCtrl.GetChildItem(TVI_ROOT);
+	std::queue<HTREEITEM> q_n;
+	while (h_node != NULL)
+	{
+		// Try to get the next item
+		q_n.push(h_node);
+		h_node = treeCtrl.GetNextItem(h_node, TVGN_NEXT);
+	}
+
+	while (!q_n.empty())
+	{
+		HTREEITEM h_parent = q_n.front();
+		q_n.pop();
+
+		TVITEM item;
+		item.hItem = h_parent;
+		item.mask =  TVIF_HANDLE | TVIF_PARAM;
+		treeCtrl.GetItem(&item);
+		ItemFunc* func = (ItemFunc *)item.lParam;
+		delete func;
+
+		HTREEITEM h_child = treeCtrl.GetChildItem(h_parent);
+		while (NULL != h_child)
+		{
+			if (treeCtrl.GetCheck(h_child))
+			{
+				TVITEM item;
+				std::string token = treeCtrl.GetItemText(h_child);
+			}
+			// Try to get the next item
+			q_n.push(h_child);
+			h_child = treeCtrl.GetNextItem(h_child, TVGN_NEXT);
+		}
+	}
+	m_columnTree.GetTreeCtrl().DeleteAllItems();
+}
+
+void CGLTraceInstruDlg::UpdateTree(const ItemGroups* g)
+{
+	ClearTree();
+	/*
+	 *  Insert items
+	 */
+
+	HTREEITEM hRoot, hItem;
+	CCustomTreeChildCtrl &ctrl = m_columnTree.GetTreeCtrl();
+	for (ItemGroups::const_iterator it = g->begin(); it != g->end(); it ++)
+	{
+		ItemGroup item_g = *it;
+
+		HTREEITEM hGroup = ctrl.InsertItem(item_g.first.c_str(), m_idGroup, m_idGroup);
+		HTREEITEM hFunc = TVI_LAST;
+		const std::list<ItemFunc*>& funcs = item_g.second;
+		for (std::list<ItemFunc*>::const_iterator it = funcs.begin()
+			; it != funcs.end()
+			; it ++)
+		{
+			ItemFunc* func = *it;
+			hFunc = ctrl.InsertItem(TVIF_TEXT|TVIF_PARAM|TVIF_IMAGE, func->name.c_str(), m_idItem, m_idItem, 0, 0, (LPARAM)func, hGroup, hFunc);
+		}
+	}
+}
+
 void CGLTraceInstruDlg::InitTree()
 {
 	/*
@@ -146,8 +212,8 @@ void CGLTraceInstruDlg::InitTree()
 
 	m_imgList.Create (16, 16, ILC_COLOR32 | ILC_MASK, 5, 1);
 
-	int id_Group = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_MYCOMPUTER));
-	int id_Item = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_FIXEDDISK));
+	m_idGroup = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_MYCOMPUTER));
+	m_idItem = m_imgList.Add(AfxGetApp()->LoadIcon(IDI_FIXEDDISK));
 
 	// // assign image list to tree control
 	m_columnTree.GetTreeCtrl().SetImageList(&m_imgList, TVSIL_NORMAL);
@@ -159,23 +225,6 @@ void CGLTraceInstruDlg::InitTree()
 	m_columnTree.GetWindowRect(&rc);
 	m_columnTree.InsertColumn(0, _T("OpenGL APIs Functions"), LVCFMT_LEFT, rc.Width());
 
-
-	/*
-	 *  Insert items
-	 */
-
-	HTREEITEM hRoot, hItem;
-	CCustomTreeChildCtrl &ctrl = m_columnTree.GetTreeCtrl();
-	for (int i_g = 0; i_g < sizeof(g_apiGroup) / sizeof(ApiGroup); i_g ++)
-	{
-		ApiGroup g = g_apiGroup[i_g];
-		HTREEITEM hGroup = ctrl.InsertItem(g.szName, id_Group, id_Group);
-		HTREEITEM hFunc = TVI_LAST;
-		for (int i_func = g.i_left; i_func < g.i_right; i_func ++)
-		{
-			hFunc = ctrl.InsertItem(g_glApiNames[i_func], id_Item, id_Item, hGroup, hFunc);
-		}
-	}
 }
 
 void CGLTraceInstruDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -277,6 +326,8 @@ void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
 
 void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 {
+#define MAKE_STRING(r)\
+	r[0], r[1]-r[0]
 	// szFilters is a text string that includes two file name filters:
 	// "*.my" for "MyType Files" and "*.*' for "All Files."
 	TCHAR szFilters[] = _T("GL Header File |*.h;*.hpp|All Files (*.*)|*.*||");
@@ -292,31 +343,56 @@ void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 		CString pathName = fileDlg.GetPathName();
 		CWnd *pWnd = GetDlgItem(IDC_EDTGLHEADER);
 		pWnd->SetWindowText(pathName);
-		if (!m_lstFuncsGLHeader.empty())
-			EndParse4Funcs(&m_memGLHeader, m_lstFuncsGLHeader);
-		StartParse4Funcs(pathName, &m_memGLHeader, m_lstFuncsGLHeader);
-#ifdef TEST_START_PARSE
+		std::list<Func*> lstFuncsGLHeader;
+		MemSrc	 memGLHeader;
+
+		StartParse4Funcs(pathName, &memGLHeader, lstFuncsGLHeader);
 		char func_name[1024] = {0};
 		char version[1024] = {0};
-		for (std::list<Func*>::const_iterator it = m_lstFuncsGLHeader.begin()
-		        ; it != m_lstFuncsGLHeader.end()
+		FixMatch m_void(FIX_MATCH_CONSTRU("void"));
+		ItemGroups groups;
+		for (std::list<Func*>::const_iterator it = lstFuncsGLHeader.begin()
+		        ; it != lstFuncsGLHeader.end()
 		        ; it ++)
 		{
 			Func* func = *it;
 			strncpy(func_name, func->funcName[0], func->funcName[1] - func->funcName[0]);
 			strncpy(version, func->version[0], func->version[1] - func->version[0]);
 			ATLTRACE(_T("%s:%s\n"), version, func_name);
+			bool b_void = m_void.Match(func->retType[0], func->retType[1]);
+			ItemFunc* itemFunc = new ItemFunc(std::string(MAKE_STRING(func->funcName)), b_void);
+			bool valid_version = (func->version[0] < func->version[1]);
+			std::string str_version = valid_version ? std::string(MAKE_STRING(func->version)) : "Unknown";
+			groups[str_version].push_back(itemFunc);
+		}
+
+		UpdateTree(&groups);
+#ifdef TEST_START_PARSE
+		for (ItemGroups::iterator it = groups.begin()
+			; it != groups.end()
+			; it ++)
+		{
+			ItemGroup g = *it;
+			ATLTRACE(_T("%s:\n"), g.first.c_str());
+			const std::list<ItemFunc *>& funcs = g.second;
+			for (std::list<ItemFunc*>::const_iterator it = funcs.begin()
+				; it != funcs.end()
+				; it ++)
+			{
+				ItemFunc* func = *it;
+				ATLTRACE(_T("\t%s\n"), func->name.c_str());
+			}
 		}
 #endif
+		EndParse4Funcs(&memGLHeader, lstFuncsGLHeader);
 
 	}
-
+#undef MAKE_STRING
 }
 
 void CGLTraceInstruDlg::OnDestroy()
 {
-	if (!m_lstFuncsGLHeader.empty())
-		EndParse4Funcs(&m_memGLHeader, m_lstFuncsGLHeader);
+	ClearTree();
 	CDialog::OnDestroy();
 }
 

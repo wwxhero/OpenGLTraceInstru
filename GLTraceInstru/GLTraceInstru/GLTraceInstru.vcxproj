@@ -59,7 +59,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\GLFuncs;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\RegularExp;..\GLFuncs;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;TEST_START_PARSE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -113,7 +113,6 @@
     <ClCompile Include="GLTraceInjector.cpp" />
     <ClCompile Include="GLTraceInstru.cpp" />
     <ClCompile Include="GLTraceInstruDlg.cpp" />
-    <ClCompile Include="OpenGLApisDesc.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -124,7 +123,6 @@
     <ClInclude Include="GLTraceInjector.h" />
     <ClInclude Include="GLTraceInstru.h" />
     <ClInclude Include="GLTraceInstruDlg.h" />
-    <ClInclude Include="OpenGLApisDesc.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>

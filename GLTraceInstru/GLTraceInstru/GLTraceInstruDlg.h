@@ -4,12 +4,14 @@
 #pragma once
 #include <list>
 #include <set>
+#include <map>
 #include "afxwin.h"
 #include "ColumnTreeCtrl.h"
 #include "EasySize.h"
 #include "afxdialogex.h"
 #include "afxcmn.h"
 #include "GenGLRetFuncs.h"
+
 // CGLTraceInstruDlg dialog
 class CGLTraceInstruDlg : public CDialogEx
 {
@@ -44,6 +46,8 @@ public:
 	CImageList m_imgList;
 	CProgressCtrl m_progCtrl;
 	std::set<CString> c_setFileFilters;
+	int m_idGroup;
+	int m_idItem;
 private:
 	void InitOptions();
 	void InitTree();
@@ -51,6 +55,22 @@ private:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult);
 private:
-	std::list<Func*> m_lstFuncsGLHeader;
-	MemSrc	 m_memGLHeader;
+	class ItemFunc
+	{
+	public:
+		ItemFunc(const std::string& a_name, bool a_ret)
+			: name(a_name)
+			, b_ret(a_ret)
+		{
+		}
+	public:
+		const std::string name;
+		const bool b_ret;
+	};
+	typedef std::map<std::string, std::list<ItemFunc*>> ItemGroups;
+	typedef std::pair<std::string, std::list<ItemFunc*>> ItemGroup;
+
+	void UpdateTree(const ItemGroups* g);
+	void ClearTree();
+
 };
