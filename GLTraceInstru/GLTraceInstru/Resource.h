@@ -42,6 +42,7 @@
 #define IDC_BTNSRCDIR_INJECT            1015
 #define IDC_EDTSRCDIR_INJECT            1016
 #define IDC_BTNINJECT                   1017
+#define IDC_EDTSYNCFUNCS                1018
 #define IDC_BTNLOGGERFUNCGEN            1021
 #define IDC_LOGGER_SRC_PATH             1022
 
@@ -51,7 +52,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        141
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1014
+#define _APS_NEXT_CONTROL_VALUE         1019
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
