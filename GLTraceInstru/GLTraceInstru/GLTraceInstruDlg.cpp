@@ -150,22 +150,17 @@ void CGLTraceInstruDlg::ClearTree()
 		HTREEITEM h_parent = q_n.front();
 		q_n.pop();
 
-		TVITEM item;
-		item.hItem = h_parent;
-		item.mask =  TVIF_HANDLE | TVIF_PARAM;
-		treeCtrl.GetItem(&item);
-		ItemFunc* func = (ItemFunc *)item.lParam;
-		delete func;
-
 		HTREEITEM h_child = treeCtrl.GetChildItem(h_parent);
 		while (NULL != h_child)
 		{
-			if (treeCtrl.GetCheck(h_child))
-			{
-				TVITEM item;
-				std::string token = treeCtrl.GetItemText(h_child);
-			}
 			// Try to get the next item
+			TVITEM item;
+			item.hItem = h_child;
+			item.mask =  TVIF_HANDLE | TVIF_PARAM;
+			treeCtrl.GetItem(&item);
+			ItemFunc* func = (ItemFunc *)item.lParam;
+			delete func;
+
 			q_n.push(h_child);
 			h_child = treeCtrl.GetNextItem(h_child, TVGN_NEXT);
 		}
@@ -352,18 +347,30 @@ void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 
 		StartParse4Funcs(pathName, &memGLHeader, lstFuncsGLHeader);
 		FixMatch m_void(FIX_MATCH_CONSTRU("void"));
+		int n_void = 0;
+		int n_unvoid = 0;
 		ItemGroups groups;
 		for (std::list<Func*>::const_iterator it = lstFuncsGLHeader.begin()
 		        ; it != lstFuncsGLHeader.end()
 		        ; it ++)
 		{
 			Func* func = *it;
-			bool b_void = m_void.Match(func->retType[0], func->retType[1]);
-			ItemFunc* itemFunc = new ItemFunc(std::string(MAKE_STRING(func->funcName)), b_void);
+			const char* ret_l = func->retType[0];
+			const char* ret_r = func->retType[1];
+			bool b_void = m_void.Match(ret_l, ret_r);
+			if (b_void)
+				n_void ++;
+			else
+				n_unvoid ++;
+			ItemFunc* itemFunc = new ItemFunc(std::string(MAKE_STRING(func->funcName)), !b_void);
 			bool valid_version = (func->version[0] < func->version[1]);
 			std::string str_version = valid_version ? std::string(MAKE_STRING(func->version)) : "Unknown";
 			groups[str_version].push_back(itemFunc);
 		}
+
+		CString parseInfo;
+		parseInfo.Format(_T("void functions:%d  unvoid functions:%d"), n_void, n_unvoid);
+		SetWindowText(parseInfo);
 
 		UpdateTree(&groups);
 #ifdef TEST_START_PARSE
@@ -383,6 +390,17 @@ void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 			}
 		}
 #endif
+
+		CString funcPath;
+		CWnd *edt_path_logger = GetDlgItem(IDC_EDTSRCDIR_LOGGER);
+		edt_path_logger->GetWindowText(funcPath);
+		CString declarePath;
+		declarePath.Format("%s\\traceGlFuncs.h", funcPath);
+		GenFuncsDecl(declarePath, &memGLHeader, lstFuncsGLHeader);
+		CString definiPath;
+		definiPath.Format("%s\\traceGlFuncs.cpp", funcPath);
+		GenFuncsImpl(definiPath, &memGLHeader, lstFuncsGLHeader);
+
 		EndParse4Funcs(&memGLHeader, lstFuncsGLHeader);
 
 	}
@@ -397,24 +415,27 @@ void CGLTraceInstruDlg::OnDestroy()
 
 void CGLTraceInstruDlg::OnUpdateBtns(CCmdUI* cmdUI)
 {
-#define CHECK_UI(id)\
-		CWnd *pEdt = GetDlgItem(id);\
-		CString strPath;\
-		pEdt->GetWindowText(strPath);\
-		cmdUI->Enable(!strPath.IsEmpty());
-	if (IDC_BTNGLHEADER == cmdUI->m_nID)
+	struct Entry
 	{
-		CHECK_UI(IDC_EDTSRCDIR_LOGGER)
-	}
-	else if(IDC_BTNSRCDIR_INJECT == cmdUI->m_nID)
+		unsigned int cmdId;
+		unsigned int depId;
+	} entries [] = {
+		{IDC_BTNGLHEADER, IDC_EDTSRCDIR_LOGGER}
+		, {IDC_BTNSRCDIR_INJECT, IDC_EDTGLHEADER}
+		, {IDC_BTNINJECT, IDC_EDTSRCDIR_INJECT}
+	};
+
+	for (int i_entry = 0; i_entry < sizeof(entries)/sizeof(Entry); i_entry ++)
 	{
-		CHECK_UI(IDC_EDTGLHEADER)
+		if (entries[i_entry].cmdId == cmdUI->m_nID)
+		{
+			CWnd *pEdt = GetDlgItem(entries[i_entry].depId);
+			CString strPath;
+			pEdt->GetWindowText(strPath);
+			cmdUI->Enable(!strPath.IsEmpty());
+			break;
+		}
 	}
-	else if(IDC_BTNINJECT == cmdUI->m_nID)
-	{
-		CHECK_UI(IDC_EDTSRCDIR_INJECT)
-	}
-#undef CHECK_UI
 }
 
 LRESULT CGLTraceInstruDlg::OnKickIdle(WPARAM, LPARAM)
@@ -466,7 +487,8 @@ void CGLTraceInstruDlg::OnBtnClickFilePathSel()
 
 void CGLTraceInstruDlg::OnBtnClickStartInjection()
 {
-	std::set<std::string> tokens;
+	std::set<std::string> void_tokens;
+	std::set<std::string> unvoid_tokens;
 	CTreeCtrl& treeCtrl = m_columnTree.GetTreeCtrl();
 	HTREEITEM h_node = treeCtrl.GetChildItem(TVI_ROOT);
 	std::queue<HTREEITEM> q_n;
@@ -475,12 +497,6 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 		// Get the text for the item. Notice we use TVIF_TEXT because
 		// we want to retrieve only the text, but also specify TVIF_HANDLE
 		// because we're getting the item by its handle.
-		if (treeCtrl.GetCheck(h_node))
-		{
-			TVITEM item;
-			std::string token = treeCtrl.GetItemText(h_node);
-			tokens.insert(token);
-		}
 		// Try to get the next item
 		q_n.push(h_node);
 		h_node = treeCtrl.GetNextItem(h_node, TVGN_NEXT);
@@ -496,14 +512,40 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 			if (treeCtrl.GetCheck(h_child))
 			{
 				TVITEM item;
-				std::string token = treeCtrl.GetItemText(h_child);
-				tokens.insert(token);
+				item.hItem = h_child;
+				item.mask =  TVIF_HANDLE | TVIF_PARAM;
+				treeCtrl.GetItem(&item);
+				ItemFunc* func = (ItemFunc *)item.lParam;
+				if (func->b_ret)
+					unvoid_tokens.insert(func->name);
+				else
+					void_tokens.insert(func->name);
 			}
 			// Try to get the next item
 			q_n.push(h_child);
 			h_child = treeCtrl.GetNextItem(h_child, TVGN_NEXT);
 		}
 	}
+
+#ifdef TEST_START_PARSE
+	ATLTRACE("\n\nvoid functions:");
+	for (std::set<std::string>::iterator it = void_tokens.begin()
+		; it != void_tokens.end()
+		; it ++)
+	{
+		const std::string& str = *it;
+		ATLTRACE("\n\t%s", str.c_str());
+	}
+
+	ATLTRACE("\n\nunvoid functions:");
+	for (std::set<std::string>::iterator it = unvoid_tokens.begin()
+		; it != unvoid_tokens.end()
+		; it ++)
+	{
+		const std::string& str = *it;
+		ATLTRACE("\n\t%s", str.c_str());
+	}
+#endif
 
 	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_INJECT);
 	CString strDirPath;
@@ -521,10 +563,10 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 	{
 		pos ++;
 		m_progCtrl.SetPos(pos);
-		Inject(*it, tokens);
+		Inject(*it, void_tokens);
 	}
-	m_progCtrl.SetPos(0);
 	AfxMessageBox("Done!!!");
+	m_progCtrl.SetPos(0);
 }
 
 void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles) const
