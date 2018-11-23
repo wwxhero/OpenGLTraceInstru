@@ -16,6 +16,8 @@
 #define new DEBUG_NEW
 #endif
 
+#define MAKE_STRING(r)\
+	r[0], r[1]-r[0]
 
 // CAboutDlg dialog used for App About
 
@@ -325,8 +327,6 @@ void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
 
 void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 {
-#define MAKE_STRING(r)\
-	r[0], r[1]-r[0]
 	// szFilters is a text string that includes two file name filters:
 	// "*.my" for "MyType Files" and "*.*' for "All Files."
 	TCHAR szFilters[] = _T("GL Header File |*.h;*.hpp|All Files (*.*)|*.*||");
@@ -404,7 +404,6 @@ void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 		EndParse4Funcs(&memGLHeader, lstFuncsGLHeader);
 
 	}
-#undef MAKE_STRING
 }
 
 void CGLTraceInstruDlg::OnDestroy()
@@ -489,6 +488,7 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 {
 	std::set<std::string> void_tokens;
 	std::set<std::string> unvoid_tokens;
+	std::set<std::string> sync_tokens;
 	CTreeCtrl& treeCtrl = m_columnTree.GetTreeCtrl();
 	HTREEITEM h_node = treeCtrl.GetChildItem(TVI_ROOT);
 	std::queue<HTREEITEM> q_n;
@@ -527,6 +527,35 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 		}
 	}
 
+	CString strSyncFuncs;
+	CWnd *pEdtSync = GetDlgItem(IDC_EDTSYNCFUNCS);
+	pEdtSync->GetWindowText(strSyncFuncs);
+	const char* p = strSyncFuncs.LockBuffer();
+	const char* p_end = p + strSyncFuncs.GetLength();
+	NameMatch name;
+	if (name.Match(p, p_end))
+	{
+		const char* token[2] = {0};
+		name.Range(token);
+		sync_tokens.insert(std::string(MAKE_STRING(token)));
+		FixMatch semicolon(FIX_MATCH_CONSTRU(";"));
+		BlankMatch blank;
+		BlankMatchStar blank_star(&blank);
+		PatternMatch* g[] = {&blank_star, &semicolon, &blank_star, &name};
+		And m(g, 4);
+		while (m.Match(p, p_end))
+		{
+			name.Range(token);
+			sync_tokens.insert(std::string(MAKE_STRING(token)));
+		}
+
+	}
+
+
+	strSyncFuncs.UnlockBuffer();
+
+
+
 #ifdef TEST_START_PARSE
 	ATLTRACE("\n\nvoid functions:");
 	for (std::set<std::string>::iterator it = void_tokens.begin()
@@ -545,6 +574,16 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 		const std::string& str = *it;
 		ATLTRACE("\n\t%s", str.c_str());
 	}
+
+	ATLTRACE("\n\nsync functions:");
+	for (std::set<std::string>::iterator it = sync_tokens.begin()
+		; it != sync_tokens.end()
+		; it ++)
+	{
+		const std::string& str = *it;
+		ATLTRACE("\n\t%s", str.c_str());
+	}
+
 #endif
 
 	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_INJECT);
@@ -621,3 +660,4 @@ void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles)
 	finder.Close();
 }
 
+#undef MAKE_STRING

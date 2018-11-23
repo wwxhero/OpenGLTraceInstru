@@ -35,4 +35,5 @@ FUNCS_API void GenFuncsDecl(const char* szPath, const MemSrc* mem, const std::li
 FUNCS_API void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>& lstFuncs);
 FUNCS_API void EndParse4Funcs(MemSrc* mem, std::list<Func*>& lstFuncs);
 
+
 #endif

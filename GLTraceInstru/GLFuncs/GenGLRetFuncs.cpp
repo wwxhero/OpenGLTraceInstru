@@ -65,7 +65,7 @@ void UnLoad(MemSrc* mem)
 }
 
 
-void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& lstFuncs, const char* version[2])
+bool PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& lstFuncs, const char* version[2])
 {
 	if (size > 0)
 	{
@@ -172,6 +172,7 @@ void PatternMatchIntera(const char*& p, unsigned int& size, std::list<Func*>& ls
 		}
 		p = p_prime;
 		size = size_prime;
+		return match;
 		//PatternMatchIntera(p_prime, size_prime, lstFuncs);
 		//GLAPI +[A-Z|a-z]+ +APIENTRY +[A-Z|a-z]+ *\( *[A-Z|a-z]+ +[A-Z|a-z] * ,
 		//1		2         3 4   5     6         7 8 9 10      11 12      13 14 15
@@ -441,3 +442,4 @@ void GenFuncsImpl(const char* szPath, const MemSrc* mem, const std::list<Func*>&
 	}
 #undef MAK_STRING
 }
+
