@@ -132,6 +132,13 @@ BOOL CGLTraceInstruDlg::OnInitDialog()
 	m_columnTree.GetTreeCtrl().ModifyStyle(0, uTreeStyle);
 
 	InitTree();
+#ifdef TEST_INJECTION
+	OnBtnClickLoggerPathSel();
+	OnBtnClickHeaderSel();
+	OnBtnClickFilePathSel();
+	CWnd* pWnd = GetDlgItem(IDC_EDTSYNCFUNCS);
+	pWnd->SetWindowText(_T("Swap; SwapBuffer; glFlush;"));
+#endif
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -327,6 +334,11 @@ void CGLTraceInstruDlg::OnRclickedColumntree(LPNMHDR pNMHDR, LRESULT* pResult)
 
 void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 {
+	CString pathName;
+#ifdef TEST_INJECTION
+	bool ok = true;
+	pathName = "D:\\Users\\wanxwang\\advanced_OS\\graphic_pipeline\\OpenGL_Demo\\samples\\external\\GL3\\gl3.h";
+#else
 	// szFilters is a text string that includes two file name filters:
 	// "*.my" for "MyType Files" and "*.*' for "All Files."
 	TCHAR szFilters[] = _T("GL Header File |*.h;*.hpp|All Files (*.*)|*.*||");
@@ -337,9 +349,12 @@ void CGLTraceInstruDlg::OnBtnClickHeaderSel()
 
 	// Display the file dialog. When user clicks OK, fileDlg.DoModal()
 	// returns IDOK.
-	if (fileDlg.DoModal() == IDOK)
+	bool ok = (fileDlg.DoModal() == IDOK);
+	if (ok)
+		pathName = fileDlg.GetPathName();
+#endif
+	if (ok)
 	{
-		CString pathName = fileDlg.GetPathName();
 		CWnd *pWnd = GetDlgItem(IDC_EDTGLHEADER);
 		pWnd->SetWindowText(pathName);
 		std::list<Func*> lstFuncsGLHeader;
@@ -414,6 +429,9 @@ void CGLTraceInstruDlg::OnDestroy()
 
 void CGLTraceInstruDlg::OnUpdateBtns(CCmdUI* cmdUI)
 {
+#ifdef TEST_INJECTION
+	cmdUI->Enable(TRUE);
+#else
 	struct Entry
 	{
 		unsigned int cmdId;
@@ -435,6 +453,7 @@ void CGLTraceInstruDlg::OnUpdateBtns(CCmdUI* cmdUI)
 			break;
 		}
 	}
+#endif
 }
 
 LRESULT CGLTraceInstruDlg::OnKickIdle(WPARAM, LPARAM)
@@ -445,9 +464,12 @@ LRESULT CGLTraceInstruDlg::OnKickIdle(WPARAM, LPARAM)
 
 void CGLTraceInstruDlg::OnBtnClickLoggerPathSel()
 {
-	CFolderPickerDialog folderPickerDialog(NULL, OFN_FILEMUSTEXIST  | OFN_ENABLESIZING, this, sizeof(OPENFILENAME)); //fixme: | OFN_ALLOWMULTISELECT
-	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_LOGGER);
 	CString folders;
+	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_LOGGER);
+#ifdef TEST_INJECTION
+	folders = "D:\\Users\\wanxwang\\advanced_OS\\graphic_pipeline\\OpenGL_Demo\\GLTracer";
+#else
+	CFolderPickerDialog folderPickerDialog(NULL, OFN_FILEMUSTEXIST  | OFN_ENABLESIZING, this, sizeof(OPENFILENAME)); //fixme: | OFN_ALLOWMULTISELECT
 	if (folderPickerDialog.DoModal() == IDOK)
 	{
 		POSITION pos = folderPickerDialog.GetStartPosition();
@@ -460,14 +482,18 @@ void CGLTraceInstruDlg::OnBtnClickLoggerPathSel()
 			folders += path;
 		}
 	}
+#endif
 	pEdit->SetWindowText(folders);
 }
 
 void CGLTraceInstruDlg::OnBtnClickFilePathSel()
 {
-	CFolderPickerDialog folderPickerDialog(NULL, OFN_FILEMUSTEXIST  | OFN_ENABLESIZING, this, sizeof(OPENFILENAME)); //fixme: | OFN_ALLOWMULTISELECT
-	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_INJECT);
 	CString folders;
+	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_INJECT);
+#ifdef TEST_INJECTION
+	folders = "D:\\Users\\wanxwang\\advanced_OS\\graphic_pipeline\\OpenGL_Demo\\samples\\Triangle";
+#else
+	CFolderPickerDialog folderPickerDialog(NULL, OFN_FILEMUSTEXIST  | OFN_ENABLESIZING, this, sizeof(OPENFILENAME)); //fixme: | OFN_ALLOWMULTISELECT
 	if (folderPickerDialog.DoModal() == IDOK)
 	{
 		POSITION pos = folderPickerDialog.GetStartPosition();
@@ -480,6 +506,7 @@ void CGLTraceInstruDlg::OnBtnClickFilePathSel()
 			folders += path;
 		}
 	}
+#endif
 	pEdit->SetWindowText(folders);
 }
 
