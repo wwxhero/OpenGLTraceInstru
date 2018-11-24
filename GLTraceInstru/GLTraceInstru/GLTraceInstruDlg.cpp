@@ -16,8 +16,7 @@
 #define new DEBUG_NEW
 #endif
 
-#define MAKE_STRING(r)\
-	r[0], r[1]-r[0]
+
 
 // CAboutDlg dialog used for App About
 
@@ -491,7 +490,7 @@ void CGLTraceInstruDlg::OnBtnClickFilePathSel()
 	CString folders;
 	CWnd *pEdit = GetDlgItem(IDC_EDTSRCDIR_INJECT);
 #ifdef TEST_INJECTION
-	folders = "D:\\Users\\wanxwang\\advanced_OS\\graphic_pipeline\\OpenGL_Demo\\samples\\Triangle";
+	folders = "D:\\Users\\wanxwang\\advanced_OS\\graphic_pipeline\\OpenGL_Demo\\samples\\Monkey";
 #else
 	CFolderPickerDialog folderPickerDialog(NULL, OFN_FILEMUSTEXIST  | OFN_ENABLESIZING, this, sizeof(OPENFILENAME)); //fixme: | OFN_ALLOWMULTISELECT
 	if (folderPickerDialog.DoModal() == IDOK)
@@ -629,7 +628,7 @@ void CGLTraceInstruDlg::OnBtnClickStartInjection()
 	{
 		pos ++;
 		m_progCtrl.SetPos(pos);
-		Inject(*it, void_tokens);
+		Inject(*it, void_tokens, unvoid_tokens, sync_tokens);
 	}
 	AfxMessageBox("Done!!!");
 	m_progCtrl.SetPos(0);
@@ -687,4 +686,3 @@ void CGLTraceInstruDlg::Recurse(LPCTSTR szPathDir, std::list<CString>& lstFiles)
 	finder.Close();
 }
 
-#undef MAKE_STRING

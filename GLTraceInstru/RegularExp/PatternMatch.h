@@ -25,6 +25,9 @@
 #define FIX_MATCH_CONSTRU(p)\
 		p, sizeof(p)-1
 
+#define MAKE_STRING(r)\
+	r[0], r[1]-r[0]
+
 class PatternMatch
 {
 public:
@@ -158,6 +161,24 @@ private:
 
 typedef Plus<BlankMatch> BlankMatchPlus;
 
+template<class TMatch>
+class Question : public PatternMatch
+{
+public:
+	Question(TMatch* m) : m_pMatch(m)
+	{
+	}
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		m_range[0] = p;
+		while(m_pMatch->Match(p, end));
+		m_range[1] = p;
+		return m_range[1] - m_range[0] < 2;
+	}
+private:
+	TMatch* m_pMatch;
+};
+
 class Or : public PatternMatch
 {
 public:
@@ -202,25 +223,6 @@ public:
 private:
 	PatternMatch** m_arr;
 	unsigned int m_n;
-};
-
-class LetterMatch : public PatternMatch
-{
-public:
-	LetterMatch()
-	{
-
-	}
-	virtual bool Match(const char*& p, const char* end) override
-	{
-		m_range[0] = p;
-		bool matched = A_LETTER(*p);
-		while(A_LETTER(*p)
-		   && p < end)
-			p ++;
-		m_range[1] = p;
-		return matched;
-	}
 };
 
 class NameMatch : public PatternMatch
@@ -289,6 +291,36 @@ public:
 
 		}
 		return match;
+	}
+};
+
+
+class ValueMatch : public NameMatch
+{
+public:
+	virtual bool Match(const char*& p, const char* end) override
+	{
+		m_range[0] = p;
+		int lock = 0;
+		while (p < end
+			&& (
+					(!COMMA(*p))
+			 		|| lock < 0
+			 	)
+			)
+		{
+			if (LEFT_PARENTHESIS(*p))
+				lock --;
+			else if(RIGHT_PARENTHESIS(*p))
+			{
+				lock ++;
+				if (lock > 0)
+					break;
+			}
+			p ++;
+		}
+		m_range[1] = p;
+		return m_range[1] > m_range[0];
 	}
 };
 

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <set>
 #include <list>
+#include "PatternMatch.h"
 
 
 struct MemSrc
@@ -69,190 +70,275 @@ void UnLoad(MemSrc* mem)
 
 }
 
-class Expression
+class Call
 {
 public:
-	void push_param(const std::string& param)
+	Call(const char* range[2]
+		, const std::string& token
+		, const std::list<std::string>& params)
 	{
-		m_params.push_back(param);
+		m_range[0] = range[0];
+		m_range[1] = range[1];
+		m_token = token;
+		m_params = params;
 	}
-	void emitt(std::string& exp)
+	void Range(const char* range[2])
 	{
-		if (m_reference.empty())
-		{
-			//GLTrace_void_n(token, param1, param2, ..., paramn)
-			std::stringstream o;
-			o << "GLTRACE_VOID_" << m_params.size() << "(" << m_token;
-			for (std::list<std::string>::iterator it = m_params.begin()
-				; it != m_params.end()
-				; it ++)
-			{
-				o << ", " << *it;
-			}
-			o << ")";
-			exp = o.str();
-		}
-		reset();
+		range[0] = m_range[0];
+		range[1] = m_range[1];
 	}
-	void reset()
-	{
-		m_token.clear();
-		m_reference.clear();
-		m_params.clear();
-	}
-	const char* m_src;
-	std::string m_token;
-	std::string m_reference;
+	virtual void emitt(std::string& exp) = 0;
 private:
+	const char* m_range[2];
+protected:
 	std::list<std::string> m_params;
+	std::string m_token;
+
 };
 
-void InjectInternal(const std::set<std::string>& tokens, const MemSrc* src, std::ostringstream* dst)
+class GLCall : public Call
 {
-	const char* p_start = (const char*)src->p;
-	const char* p_end = (const char*)(src->p + src->size);
-	const char* p = p_start;
-	enum {ready = 0, parsing_G, parsing_P} s = ready;
-	std::string token;
-	std::string param;
-	Expression exp;
-#define A_LETTER(c)\
-	(c > 'A'-1 && c <'Z'+1)\
-	|| (c > 'a'-1 && c < 'z'+1)
-#define LEFT_PARENTHESIS(c)\
-	('(' == c)
-#define RIGHT_PARENTHESIS(c)\
-	(')' == c)
-#define COMMA(c)\
-	(',' == c)
-#define SPACE(c)\
-	(' ' == c)
-#define TAB(c)\
-	('\t' == c)
-#define LINEBR(p)\
-	((*p == '\n')\
-	|| (*p == '\r' && *(p+1) == '\n'))
-
-	while (p < p_end)
+public:
+	GLCall(const char* range[2]
+		, const std::string& token
+		, const std::list<std::string>& params
+		, bool void_call)
+				: Call(range, token, params)
+				, m_isVoid(void_call)
 	{
-		switch (s)
+
+	}
+	virtual void emitt(std::string& exp)
+	{
+		//GLTrace_void_n(token, param1, param2, ..., paramn)
+		std::stringstream o;
+		if (m_isVoid)
+			o << "GLTRACE_VOID_" << m_params.size() << "(" << m_token;
+		else
+			o << "GLTRACE_RET_" << m_params.size() << "(" << m_token;
+
+		for (std::list<std::string>::iterator it = m_params.begin()
+				; it != m_params.end()
+				; it ++)
 		{
-			case ready:
-			{
-				if (A_LETTER(*p))
-				{
-					token = *p;
-					exp.m_src = p;
-					s = parsing_G;
-				}
-				p ++;
-				break;
-			}
-			case parsing_G:
-			{
-				if (LINEBR(p))
-				{
-					do
-					{
-						p++;
-					}while (SPACE(*p) || TAB(*p) || LINEBR(p));
-					if (!LEFT_PARENTHESIS(*p))
-					{
-						token.clear();
-						exp.reset();
-						s = ready;
-						p--;
-						break;
-					}
-				}
+			o << ", " << *it;
+		}
+		o << ")";
+		exp = o.str();
+	}
+private:
+	bool m_isVoid;
+};
 
-				if (LEFT_PARENTHESIS(*p))
-				{
-					if (tokens.end() != tokens.find(token))
-					{
-						exp.m_token = token;
-						token.clear();
-						s = parsing_P;
-						param.clear();
-					}
-					else
-					{
-						token.clear();
-						exp.reset();
-						s = ready;
-					}
-				}
-				else if(A_LETTER(*p))
-				{
-					token += *p;
-				}
+class SyncCall : public Call
+{
+public:
+	SyncCall(const char* range[2]
+		, const std::string& token
+		, const std::list<std::string>& params)
+			: Call(range, token, params)
+	{
+	}
+	virtual void emitt(std::string& exp)
+	{
+		//GLTrace_void_n(token, param1, param2, ..., paramn)
+		std::stringstream o;
+		o << "GLTRACE_SYNC_" << m_params.size() << "(" << m_token;
 
-				else if(!SPACE(*p)
-					&& !TAB(*p))
-				{
-					token.clear();
-					exp.reset();
-					s = ready;
-				}
-				p ++;
-				break;
-			}
-			case parsing_P:
+
+		for (std::list<std::string>::iterator it = m_params.begin()
+				; it != m_params.end()
+				; it ++)
+		{
+			o << ", " << *it;
+		}
+		o << ")";
+		exp = o.str();
+	}
+};
+
+
+
+
+
+
+unsigned int MatchGLFuncs(const std::set<std::string>& void_tokens
+				, const std::set<std::string>& unvoid_tokens
+				, const char* p_start
+				, const char* p_end
+				, std::list<Call*>& calls)
+{
+	//glDrawArrays(GL_TRIANGLES, 0, 3);
+	unsigned int offset = 0;
+	NameMatch call_name;
+	BlankMatch blank_match;
+	BlankMatchStar blank_star(&blank_match);
+	FixMatch left(FIX_MATCH_CONSTRU("("));
+	PatternMatch* g[] = {&call_name, &blank_star, &left, &blank_star};
+	And g_match(g, 4);
+	const char* p = p_start;
+	if (g_match.Match(p, p_end))
+	{
+		const char* r[2] = {0};
+		call_name.Range(r);
+		std::string token(MAKE_STRING(r));
+		bool b_void = (void_tokens.end() != void_tokens.find(token));
+		bool b_unvoid = (!b_void)
+						&& (unvoid_tokens.end() != unvoid_tokens.find(token));
+		if (b_void || b_unvoid)
+		{
+			std::list<std::string> params;
+			FixMatch right(FIX_MATCH_CONSTRU(")"));
+			ValueMatch value;
+			bool b_right = false;
+			bool b_value = false;
+			while (!(b_right = right.Match(p, p_end))
+				&& (b_value = value.Match(p, p_end)))
 			{
-				static int s_nParentheis = -1;
-				if (LEFT_PARENTHESIS(*p))
-					s_nParentheis --;
-				if (RIGHT_PARENTHESIS(*p))
-				{
-					s_nParentheis ++;
-					if (0 == s_nParentheis)
-					{
-						if (!param.empty())
-							exp.push_param(param);
-						param.clear();
-						dst->write(p_start, exp.m_src-p_start);
-						p_start = p + 1;
-						std::string exp_t;
-						exp.emitt(exp_t);
-						*dst << exp_t;
-						s = ready;
-						s_nParentheis = -1;
-					}
-					else
-						param += *p;
-				}
-				else if (COMMA(*p))
-				{
-					exp.push_param(param);
-					param.clear();
-				}
+				value.Range(r);
+				params.push_back(std::string(MAKE_STRING(r)));
+
+				FixMatch sep(FIX_MATCH_CONSTRU(","));
+				Question<FixMatch> sep_ques(&sep);
+				PatternMatch* g_ignore[] = {&blank_star, &sep_ques, &blank_star};
+				And and_ignore(g_ignore, 3);
+				and_ignore.Match(p, p_end);
+			}
+			if (b_right)
+			{
+				Call *call = NULL;
+				const char* range[] = {p_start, p};
+				if (b_void)
+					call = new GLCall(range, token, params, true);
 				else
-				{
-					param += *p;
-				}
-				p ++;
-				break;
+					call = new GLCall(range, token, params, false);
+				calls.push_back(call);
+				offset = p-p_start;
 			}
 		}
 	}
-	dst->write(p_start, p-p_start);
-#undef LINEBR
-#undef SPACE
-#undef TAB
-#undef COMMA
-#undef RIGHT_PARENTHESIS
-#undef LEFT_PARENTHESIS
-#undef A_LETTER
+
+	return offset;
 }
 
-void Inject(const char* filePath, const std::set<std::string>& tokens)
+unsigned int MatchSyncFuncs(const std::set<std::string>& sync_tokens
+				, const char* p_start
+				, const char* p_end
+				, std::list<Call*>& calls)
+{
+	unsigned int offset = 0;
+	NameMatch class_name;
+	BlankMatch blank_match;
+	BlankMatchStar blank_star(&blank_match);
+	FixMatch cnn1(FIX_MATCH_CONSTRU("->"));
+	FixMatch cnn2(FIX_MATCH_CONSTRU("."));
+	PatternMatch* g_cnn[] = {&cnn1, &cnn2};
+	Or or_cnn(g_cnn, 2);
+	NameMatch call_name;
+	FixMatch left(FIX_MATCH_CONSTRU("("));
+	PatternMatch* g_cpp[] = {&class_name, &blank_star, &or_cnn, &blank_star, &call_name, &blank_star, &left, &blank_star};
+	And and_cpp(g_cpp, sizeof(g_cpp)/sizeof(PatternMatch*));
+	const char* p = p_start;
+	bool match_cpp = and_cpp.Match(p, p_end);
+	bool match_c = (!match_cpp) && call_name.Match(p, p_end);
+	if (match_cpp || match_c)
+	{
+		const char* range_proc[2] = {0};
+		call_name.Range(range_proc);
+		std::string token(MAKE_STRING(range_proc));
+		if (sync_tokens.end() != sync_tokens.find(token))
+		{
+			std::list<std::string> params;
+			FixMatch right(FIX_MATCH_CONSTRU(")"));
+			ValueMatch value;
+			bool b_right = false;
+			bool b_value = false;
+			while (!(b_right = right.Match(p, p_end))
+				&& (b_value = value.Match(p, p_end)))
+			{
+				const char* r[2] = {0};
+				value.Range(r);
+				params.push_back(std::string(MAKE_STRING(r)));
+
+				FixMatch sep(FIX_MATCH_CONSTRU(","));
+				Question<FixMatch> sep_ques(&sep);
+				PatternMatch* g_ignore[] = {&blank_star, &sep_ques, &blank_star};
+				And and_ignore(g_ignore, 3);
+				and_ignore.Match(p, p_end);
+			}
+			if (b_right)
+			{
+				Call *call = NULL;
+				if (match_cpp)
+				{
+					const char* range_class[2] = {0};
+					class_name.Range(range_class);
+					const char* range[] = {range_class[0], range_proc[1]};
+					token = std::string(MAKE_STRING(range));
+				}
+				const char* range_call[] = {p_start, p};
+				call = new SyncCall(range_call, token, params);
+				calls.push_back(call);
+				offset = p-p_start;
+			}
+		}
+
+	}
+	return offset;
+}
+
+void InjectInternal(const std::set<std::string>& void_tokens
+	, const std::set<std::string>& unvoid_tokens
+	, const std::set<std::string>& sync_tokens
+	, const MemSrc* src, std::ostringstream* dst)
+{
+	//glDrawArrays(GL_TRIANGLES, 0, 3);
+	const char* p_start = (const char*)src->p;
+	const char* p_end = p_start + src->size;
+	const char* p = p_start;
+	std::list<Call*> calls;
+	while (p < p_end)
+	{
+		unsigned int offset = MatchSyncFuncs(sync_tokens, p, p_end, calls);
+		if (offset > 0)
+			p = p + offset;
+		else if ((offset = MatchGLFuncs(void_tokens, unvoid_tokens, p, p_end, calls)) > 0)
+			p = p + offset;
+		else
+			p ++;
+	}
+	p = p_start;
+	for (std::list<Call*>::iterator it = calls.begin()
+		; it != calls.end()
+		; it ++)
+	{
+		Call* call = *it;
+		const char* range[2] = {0};
+		call->Range(range);
+		dst->write(p, range[0]-p);
+		std::string exp;
+		call->emitt(exp);
+		*dst << exp;
+		p = range[1];
+		delete call;
+	}
+	dst->write(p, p_end-p);
+}
+
+void Inject(const char* filePath
+	, const std::set<std::string>& void_tokens
+	, const std::set<std::string>& unvoid_tokens
+	, const std::set<std::string>& sync_tokens)
 {
 	MemSrc memSrc;
 	bool loaded = LoadFile(filePath, &memSrc);
 	ASSERT(loaded);
-	std::ostringstream memDst;
-	InjectInternal(tokens, &memSrc, &memDst);
-	UnLoad(&memSrc);
-	std::ofstream fOut(filePath, std::ios::binary|std::ios::out);
-	fOut << memDst.str();
+	if (loaded)
+	{
+		std::ostringstream memDst;
+		InjectInternal(void_tokens, unvoid_tokens, sync_tokens, &memSrc, &memDst);
+		UnLoad(&memSrc);
+		std::ofstream fOut(filePath, std::ios::binary|std::ios::out);
+		fOut << memDst.str();
+	}
 }
